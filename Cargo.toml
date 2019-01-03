@@ -1,0 +1,9 @@
+[package]
+name = "woff_decoder"
+version = "0.1.0"
+authors = ["Alex Khomich <alexkh90@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+byteorder = "1.2.7"
+flate2 = "1.0.6"
