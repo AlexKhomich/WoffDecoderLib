@@ -35,7 +35,7 @@ ottoTag = 0x4f54544f; // 'otto' - OpenType font
 
 use std::io::Cursor;
 use byteorder::{BigEndian, ReadBytesExt};
-use std::fs::{File};
+use std::fs::File;
 use std::io::{BufReader, Read};
 use crate::structures::Range;
 
@@ -85,4 +85,32 @@ pub fn calculate_search_range(num_tables: u16) -> u16 {
     sr &= !(sr >> 1);
     sr *= 16;
     sr
+}
+
+pub fn calculate_padded_len(orig_len: u32, sfnt_table_data_len: usize) -> u32 {
+    let aligned_len = (orig_len + 3) &!3;
+    aligned_len - sfnt_table_data_len as u32
+}
+
+pub unsafe fn any_as_u8_slice<T: Sized>(p: &T) -> &[u8] {
+    std::slice::from_raw_parts(
+        (p as *const T) as *const u8,
+        std::mem::size_of::<T>(),
+    )
+}
+
+pub fn transform_u32_to_u8_vec(x: u32) -> Vec<u8> {
+    let mut result_vec: Vec<u8> = Vec::with_capacity(4);
+    result_vec.push(((x >> 24) & 0xff) as u8);
+    result_vec.push(((x >> 16) & 0xff) as u8);
+    result_vec.push(((x >> 8) & 0xff) as u8);
+    result_vec.push((x & 0xff) as u8);
+    result_vec
+}
+
+pub fn transform_u16_to_u8_vec(x: u16) -> Vec<u8> {
+    let mut result_vec: Vec<u8> = Vec::with_capacity(2);
+    result_vec.push(((x >> 8) & 0xff) as u8);
+    result_vec.push((x & 0xff) as u8);
+    result_vec
 }

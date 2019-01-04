@@ -23,7 +23,6 @@ pub fn decode_from_file(path: &str, mut dest_buf: *mut u8) -> usize {
     //end test data
 }
 
-
 /// Decode WOFF data to SFNT data
 pub fn decode_from_data(source_buf: *const u8, woff_data_size: usize, mut dest_buf: *mut u8) -> usize {
     unimplemented!()
@@ -31,7 +30,6 @@ pub fn decode_from_data(source_buf: *const u8, woff_data_size: usize, mut dest_b
 
 /// Function for creating woff header form raw data
 fn create_woff_header(buf: &mut Vec<u8>) -> WoffHeader {
-
     let mut woff_header_builder = WoffHeaderBuilder::new();
     woff_header_builder.set_signature(read_u32_be(buf, Box::new(WoffHeaderRange::get_signature_range())));
     woff_header_builder.set_flavor(read_u32_be(buf, Box::new(WoffHeaderRange::get_flavor_range())));
@@ -79,8 +77,28 @@ fn create_woff_table_dir_entry(buf: &mut Vec<u8>, next_table_offset: usize) -> W
     builder.build()
 }
 
-fn decode_internal(mut buf: &mut Vec<u8>) -> *mut u8 {
+fn create_sfnt_binary(
+    sfnt_header: SfntOffsetTable,
+    table_records: Vec<SfntTableRecord>,
+    mut data_tables: Vec<Vec<u8>>,
+) -> *mut u8 {
+    let mut sfnt_data_vec: Vec<u8> = vec![];
+    let mut sfnt_header_data = sfnt_header.transform_to_u8_vec();
+    sfnt_data_vec.append(&mut sfnt_header_data);
 
+    for record in table_records {
+        let mut record_data = record.transform_to_u8_vec();
+        let record_slice_size = record_data.len();
+        sfnt_data_vec.append(&mut record_data);
+    };
+
+    for mut table in data_tables {
+        sfnt_data_vec.append(&mut table)
+    }
+    sfnt_data_vec.as_mut_ptr()
+}
+
+fn decode_internal(mut buf: &mut Vec<u8>) -> *mut u8 {
     let sfnt_offset_table_size = size_of::<SfntOffsetTable>();
     let sfnt_table_record_size = size_of::<SfntTableRecord>();
     let woff_table_directory_size = size_of::<WoffTableDirectoryEntry>();
@@ -88,7 +106,7 @@ fn decode_internal(mut buf: &mut Vec<u8>) -> *mut u8 {
 
     let woff_header = create_woff_header(buf);
 
-    let search_range= calculate_search_range(woff_header.num_tables);
+    let search_range = calculate_search_range(woff_header.num_tables);
     let entry_selector = calculate_entry_selector(search_range);
     let range_shift = calculate_range_shift(woff_header.num_tables, search_range);
 
@@ -118,25 +136,27 @@ fn decode_internal(mut buf: &mut Vec<u8>) -> *mut u8 {
         |a, b| a.tag.cmp(&b.tag)
     );
 
+    let mut sfnt_table_records_vec: Vec<SfntTableRecord> = vec![];
+    let mut sfnt_table_data_vec: Vec<Vec<u8>> = vec![];
+
     for i in 0..sfnt_table_size as usize {
         let table_dir_entry = &woff_table_dir_entry_container[i];
         let start_offset = table_dir_entry.offset as usize;
         let end_offset = (table_dir_entry.offset + table_dir_entry.comp_length) as usize;
 
+        let mut sfnt_table_data: Vec<u8> = Vec::with_capacity(table_dir_entry.orig_length as usize);
+        let source_slice = &buf[start_offset..end_offset];
+
         if table_dir_entry.orig_length != table_dir_entry.comp_length {
-
-            let source = &buf[start_offset..end_offset];
-            let mut dest_vec: Vec<u8> = Vec::with_capacity(table_dir_entry.orig_length as usize);
-
             let mut decompressor = Decompress::new(true);
-            let status = decompressor.decompress_vec(source, &mut dest_vec, FlushDecompress::None).unwrap();
+            let status = decompressor.decompress_vec(source_slice, &mut sfnt_table_data, FlushDecompress::None).unwrap();
 
-            let total_bytes_in = decompressor.total_in();
-            let total_bytes_out = decompressor.total_out();
+            println!("total_bytes_in: {}, total_bytes_out: {}",
+                     decompressor.total_in(), decompressor.total_out());
         } else {
-            let source = &buf[start_offset..end_offset];
-            let dest_vec: Vec<u8> = Vec::from(source);
-            let len = dest_vec.len();
+            sfnt_table_data.extend_from_slice(source_slice);
+            println!("total_bytes_in: {}, total_bytes_out: {}",
+                     source_slice.len(), sfnt_table_data.len());
         }
 
         let mut builder = SfntTableRecordBuilder::new();
@@ -145,16 +165,24 @@ fn decode_internal(mut buf: &mut Vec<u8>) -> *mut u8 {
         builder.set_offset(sfnt_table_offset as u32);
         builder.set_length(table_dir_entry.orig_length);
         let snft_table_record = builder.build();
+
+        sfnt_table_records_vec.push(snft_table_record);
+
+        // needs to check table record len on 4-bytes alignment and if it's not - add zero-bytes for 4-bytes alignment
+        if table_dir_entry.orig_length % 4 != 0 {
+            let padded_len = calculate_padded_len(table_dir_entry.orig_length, sfnt_table_data.len());
+
+            for k in 0..padded_len {
+                sfnt_table_data.push(b'\0');
+            }
+
+            sfnt_table_offset += sfnt_table_data.len()
+        } else {
+            sfnt_table_offset += table_dir_entry.orig_length as usize
+        }
+
+        sfnt_table_data_vec.push(sfnt_table_data);
     }
 
-    unimplemented!()
+    create_sfnt_binary(sfnt_offset_table, sfnt_table_records_vec, sfnt_table_data_vec)
 }
-
-unsafe fn any_as_u8_slice<T: Sized>(p: &T) -> &[u8] {
-    std::slice::from_raw_parts(
-        (p as *const T) as *const u8,
-        std::mem::size_of::<T>(),
-    )
-}
-
-
