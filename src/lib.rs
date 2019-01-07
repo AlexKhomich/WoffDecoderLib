@@ -24,25 +24,61 @@ pub fn decode_from_file(path: &str, mut dest_buf: *mut u8) -> usize {
 }
 
 /// Decode WOFF data to SFNT data
-pub fn decode_from_data(source_buf: *const u8, woff_data_size: usize, mut dest_buf: *mut u8) -> usize {
+pub fn decode_from_data(source_buf: *const u8, woff_data_size: usize, dest_buf: *mut u8) -> usize {
     unimplemented!()
 }
 
-/// Function for creating woff header form raw data
+/// Function for creating WOFF header from raw data
 fn create_woff_header(buf: &mut Vec<u8>) -> WoffHeader {
     let mut woff_header_builder = WoffHeaderBuilder::new();
-    woff_header_builder.set_signature(read_u32_be(buf, Box::new(WoffHeaderRange::get_signature_range())));
-    woff_header_builder.set_flavor(read_u32_be(buf, Box::new(WoffHeaderRange::get_flavor_range())));
-    woff_header_builder.set_length(read_u32_be(buf, Box::new(WoffHeaderRange::get_length_range())));
-    woff_header_builder.set_num_tables(read_u16_be(buf, Box::new(WoffHeaderRange::get_num_tables_range())));
-    woff_header_builder.set_total_sfnt_size(read_u32_be(buf, Box::new(WoffHeaderRange::get_total_sfnt_size_range())));
-    woff_header_builder.set_major_version(read_u16_be(buf, Box::new(WoffHeaderRange::get_major_version_range())));
-    woff_header_builder.set_minor_version(read_u16_be(buf, Box::new(WoffHeaderRange::get_minor_version_range())));
-    woff_header_builder.set_meta_offset(read_u32_be(buf, Box::new(WoffHeaderRange::get_meta_offset_range())));
-    woff_header_builder.set_meta_length(read_u32_be(buf, Box::new(WoffHeaderRange::get_meta_length_range())));
-    woff_header_builder.set_meta_orig_length(read_u32_be(buf, Box::new(WoffHeaderRange::get_meta_orgig_length_range())));
-    woff_header_builder.set_priv_offset(read_u32_be(buf, Box::new(WoffHeaderRange::get_priv_offset_range())));
-    woff_header_builder.set_priv_length(read_u32_be(buf, Box::new(WoffHeaderRange::get_priv_length_range())));
+    woff_header_builder.set_signature(read_u32_be(
+        buf,
+        Box::new(WoffHeaderRange::get_signature_range()
+        )));
+    woff_header_builder.set_flavor(read_u32_be(
+        buf,
+        Box::new(WoffHeaderRange::get_flavor_range()
+        )));
+    woff_header_builder.set_length(read_u32_be(
+        buf,
+        Box::new(WoffHeaderRange::get_length_range()
+        )));
+    woff_header_builder.set_num_tables(read_u16_be(
+        buf,
+        Box::new(WoffHeaderRange::get_num_tables_range()
+        )));
+    woff_header_builder.set_total_sfnt_size(read_u32_be(
+        buf,
+        Box::new(WoffHeaderRange::get_total_sfnt_size_range()
+        )));
+    woff_header_builder.set_major_version(read_u16_be(
+        buf,
+        Box::new(WoffHeaderRange::get_major_version_range()
+        )));
+    woff_header_builder.set_minor_version(read_u16_be(
+        buf,
+        Box::new(WoffHeaderRange::get_minor_version_range()
+        )));
+    woff_header_builder.set_meta_offset(read_u32_be(
+        buf,
+        Box::new(WoffHeaderRange::get_meta_offset_range()
+        )));
+    woff_header_builder.set_meta_length(read_u32_be(
+        buf,
+        Box::new(WoffHeaderRange::get_meta_length_range()
+        )));
+    woff_header_builder.set_meta_orig_length(read_u32_be(
+        buf,
+        Box::new(WoffHeaderRange::get_meta_orgig_length_range()
+        )));
+    woff_header_builder.set_priv_offset(read_u32_be(
+        buf,
+        Box::new(WoffHeaderRange::get_priv_offset_range()
+        )));
+    woff_header_builder.set_priv_length(read_u32_be(
+        buf,
+        Box::new(WoffHeaderRange::get_priv_length_range()
+        )));
     woff_header_builder.build()
 }
 
@@ -77,10 +113,11 @@ fn create_woff_table_dir_entry(buf: &mut Vec<u8>, next_table_offset: usize) -> W
     builder.build()
 }
 
-fn create_sfnt_binary(
+/// Creates SFNT binary from parts of data and returns raw pointer on this data
+fn assemble_sfnt_binary(
     sfnt_header: SfntOffsetTable,
     table_records: Vec<SfntTableRecord>,
-    mut data_tables: Vec<Vec<u8>>,
+    data_tables: Vec<Vec<u8>>,
 ) -> *mut u8 {
     let mut sfnt_data_vec: Vec<u8> = vec![];
     let mut sfnt_header_data = sfnt_header.transform_to_u8_vec();
@@ -88,7 +125,6 @@ fn create_sfnt_binary(
 
     for record in table_records {
         let mut record_data = record.transform_to_u8_vec();
-        let record_slice_size = record_data.len();
         sfnt_data_vec.append(&mut record_data);
     };
 
@@ -98,18 +134,22 @@ fn create_sfnt_binary(
     sfnt_data_vec.as_mut_ptr()
 }
 
+/// Main function to decode and construct SFNT file or data form WOFF file
 fn decode_internal(mut buf: &mut Vec<u8>) -> *mut u8 {
+    // We need to know sizes of several SFNT and WOFF structures.
     let sfnt_offset_table_size = size_of::<SfntOffsetTable>();
     let sfnt_table_record_size = size_of::<SfntTableRecord>();
     let woff_table_directory_size = size_of::<WoffTableDirectoryEntry>();
     let woff_header_size = size_of::<WoffHeader>();
 
+    // Construct WOFF header.
     let woff_header = create_woff_header(buf);
 
     let search_range = calculate_search_range(woff_header.num_tables);
     let entry_selector = calculate_entry_selector(search_range);
     let range_shift = calculate_range_shift(woff_header.num_tables, search_range);
 
+    // Construct SFNT header (sfnt_offset_table) with its builder.
     let mut builder = SfntOffsetTableBuilder::new();
     builder.set_version(woff_header.flavor);
     builder.set_num_tables(woff_header.num_tables);
@@ -125,7 +165,7 @@ fn decode_internal(mut buf: &mut Vec<u8>) -> *mut u8 {
 
     // construct each SFNT table record
     for i in 0..sfnt_table_size as usize {
-        let mut next_table_offset = woff_header_size + (i * woff_table_directory_size);
+        let next_table_offset = woff_header_size + (i * woff_table_directory_size);
         let woff_table_dir_entry = create_woff_table_dir_entry(&mut buf, next_table_offset);
         woff_table_dir_entry_container.push(woff_table_dir_entry);
         sfnt_table_offset += sfnt_table_record_size
@@ -148,6 +188,7 @@ fn decode_internal(mut buf: &mut Vec<u8>) -> *mut u8 {
         let source_slice = &buf[start_offset..end_offset];
 
         if table_dir_entry.orig_length != table_dir_entry.comp_length {
+            // decompress table data
             let mut decompressor = Decompress::new(true);
             let status = decompressor.decompress_vec(source_slice, &mut sfnt_table_data, FlushDecompress::None).unwrap();
 
@@ -155,6 +196,7 @@ fn decode_internal(mut buf: &mut Vec<u8>) -> *mut u8 {
                      decompressor.total_in(), decompressor.total_out());
         } else {
             sfnt_table_data.extend_from_slice(source_slice);
+
             println!("total_bytes_in: {}, total_bytes_out: {}",
                      source_slice.len(), sfnt_table_data.len());
         }
@@ -168,11 +210,11 @@ fn decode_internal(mut buf: &mut Vec<u8>) -> *mut u8 {
 
         sfnt_table_records_vec.push(snft_table_record);
 
-        // needs to check table record len on 4-bytes alignment and if it's not - add zero-bytes for 4-bytes alignment
+        // needs to check table record len on 4-bytes alignment and if it's not - add zero-bytes to each unalignment table
         if table_dir_entry.orig_length % 4 != 0 {
             let padded_len = calculate_padded_len(table_dir_entry.orig_length, sfnt_table_data.len());
 
-            for k in 0..padded_len {
+            for _ in 0..padded_len {
                 sfnt_table_data.push(b'\0');
             }
 
@@ -184,5 +226,5 @@ fn decode_internal(mut buf: &mut Vec<u8>) -> *mut u8 {
         sfnt_table_data_vec.push(sfnt_table_data);
     }
 
-    create_sfnt_binary(sfnt_offset_table, sfnt_table_records_vec, sfnt_table_data_vec)
+    assemble_sfnt_binary(sfnt_offset_table, sfnt_table_records_vec, sfnt_table_data_vec)
 }

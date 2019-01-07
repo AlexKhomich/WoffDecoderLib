@@ -1,12 +1,13 @@
 use crate::utils::{transform_u32_to_u8_vec, transform_u16_to_u8_vec};
 
-/// Base range structure
+/// Base range trait
 pub trait Range {
     fn get_start_offset(&self) -> usize;
     fn get_end_offset(&self) -> usize;
     fn get_length(&self) -> usize;
 }
 
+/// Base range structure
 struct BaseRange {
     start_byte: usize,
     end_byte: usize,
@@ -148,31 +149,32 @@ impl WoffTableDirectoryEntryRange {
 
 /// WOFF header (44 bytes length)
 pub struct WoffHeader {
-    signature: u32,
     // "magic number" - 0x774F4646 'wOFF'
-    pub flavor: u32,
+    signature: u32,
     // The "sfnt version" of the input font
-    length: u32,
+    pub flavor: u32,
     // Total size of the WOFF file
-    pub num_tables: u16,
+    length: u32,
     // Number of entries in directory of font tables
-    reserved: u16,
+    pub num_tables: u16,
     // Reserved; set to zero
-    total_sfnt_size: u32,
+    reserved: u16,
     // Total size needed for the uncompressed font data, including the sfnt header, directory, and font tables (including padding)
-    major_version: u16,
+    total_sfnt_size: u32,
     // Major version of the WOFF file
-    minor_version: u16,
+    major_version: u16,
     // Minor version of the WOFF file
-    meta_offset: u32,
+    minor_version: u16,
     // Offset to metadata block, from beginning of WOFF file
-    meta_length: u32,
+    meta_offset: u32,
     // Length of compressed metadata block
-    meta_orig_length: u32,
+    meta_length: u32,
     // Uncompressed size of metadata block
-    priv_offset: u32,
+    meta_orig_length: u32,
     // Offset to private data block, from beginning of WOFF file
-    priv_length: u32, // Length of private data block
+    priv_offset: u32,
+    // Length of private data block
+    priv_length: u32,
 }
 
 
@@ -195,7 +197,7 @@ pub struct WoffHeaderBuilder {
 
 /// Woff header builder implementation
 impl WoffHeaderBuilder {
-    pub fn new() -> WoffHeaderBuilder {
+    pub fn new() -> Self {
         WoffHeaderBuilder {
             signature: 0x774F4646,
             flavor: 0,
@@ -213,66 +215,62 @@ impl WoffHeaderBuilder {
         }
     }
 
-    pub fn set_signature(&mut self, signature: u32) -> &mut WoffHeaderBuilder {
-        if self.signature != signature {
-            panic!("WOFF file signature has incorrect value: {}", signature)
-        } else {
-            self.signature = signature;
-            self
-        }
+    pub fn set_signature(&mut self, signature: u32) -> &Self {
+        self.signature = signature;
+        self
     }
 
-    pub fn set_flavor(&mut self, flavor: u32) -> &mut WoffHeaderBuilder {
+    pub fn set_flavor(&mut self, flavor: u32) -> &Self {
         self.flavor = flavor;
         self
     }
 
-    pub fn set_length(&mut self, length: u32) -> &mut WoffHeaderBuilder {
+    pub fn set_length(&mut self, length: u32) -> &Self {
         self.length = length;
         self
     }
 
-    pub fn set_num_tables(&mut self, num_tables: u16) -> &mut WoffHeaderBuilder {
+    pub fn set_num_tables(&mut self, num_tables: u16) -> &Self {
         self.num_tables = num_tables;
         self
     }
 
-    pub fn set_total_sfnt_size(&mut self, total_sfnt_size: u32) -> &mut WoffHeaderBuilder {
+    pub fn set_total_sfnt_size(&mut self, total_sfnt_size: u32) -> &Self {
         self.total_sfnt_size = total_sfnt_size;
         self
     }
 
-    pub fn set_major_version(&mut self, major_version: u16) -> &mut WoffHeaderBuilder {
+    pub fn set_major_version(&mut self, major_version: u16) -> &Self {
         self.major_version = major_version;
         self
     }
 
-    pub fn set_minor_version(&mut self, minor_version: u16) -> &mut WoffHeaderBuilder {
+    pub fn set_minor_version(&mut self, minor_version: u16) -> &Self {
         self.minor_version = minor_version;
         self
     }
 
-    pub fn set_meta_offset(&mut self, meta_offset: u32) -> &mut WoffHeaderBuilder {
+    pub fn set_meta_offset(&mut self, meta_offset: u32) -> &Self {
         self.meta_offset = meta_offset;
         self
     }
 
-    pub fn set_meta_length(&mut self, meta_length: u32) -> &mut WoffHeaderBuilder {
+    pub fn set_meta_length(&mut self, meta_length: u32) -> &Self {
         self.meta_length = meta_length;
         self
     }
 
-    pub fn set_meta_orig_length(&mut self, meta_orig_length: u32) -> &mut WoffHeaderBuilder {
+    pub fn set_meta_orig_length(&mut self, meta_orig_length: u32) -> &Self {
         self.meta_orig_length = meta_orig_length;
         self
     }
 
-    pub fn set_priv_offset(&mut self, priv_offset: u32) -> &mut WoffHeaderBuilder {
+    pub fn set_priv_offset(&mut self, priv_offset: u32) -> &Self {
         self.priv_offset = priv_offset;
         self
     }
 
-    pub fn set_priv_length(&mut self, priv_length: u32) -> &mut WoffHeaderBuilder {
+    pub fn set_priv_length(&mut self, priv_length: u32) -> &Self {
         self.priv_length = priv_length;
         self
     }
@@ -298,15 +296,16 @@ impl WoffHeaderBuilder {
 
 /// WOFF table directory
 pub struct WoffTableDirectoryEntry {
-    pub tag: u32,
     // 4-byte sfnt table identifier
-    pub offset: u32,
+    pub tag: u32,
     // Offset to the data, from beginning of WOFF file
-    pub comp_length: u32,
+    pub offset: u32,
     // Length of the compressed data, excluding padding
-    pub orig_length: u32,
+    pub comp_length: u32,
     // Length of the uncompressed table, excluding padding
-    pub orig_checksum: u32, // Checksum of the uncompressed table
+    pub orig_length: u32,
+    // Checksum of the uncompressed table
+    pub orig_checksum: u32,
 }
 
 
@@ -330,27 +329,27 @@ impl WoffTableDirectoryEntryBuilder {
             orig_checksum: 0,
         }
     }
-    pub fn set_tag(&mut self, tag: u32) -> &WoffTableDirectoryEntryBuilder {
+    pub fn set_tag(&mut self, tag: u32) -> &Self {
         self.tag = tag;
         self
     }
 
-    pub fn set_offset(&mut self, offset: u32) -> &WoffTableDirectoryEntryBuilder {
+    pub fn set_offset(&mut self, offset: u32) -> &Self {
         self.offset = offset;
         self
     }
 
-    pub fn set_comp_length(&mut self, comp_length: u32) -> &WoffTableDirectoryEntryBuilder {
+    pub fn set_comp_length(&mut self, comp_length: u32) -> &Self {
         self.comp_length = comp_length;
         self
     }
 
-    pub fn set_orig_length(&mut self, orig_length: u32) -> &WoffTableDirectoryEntryBuilder {
+    pub fn set_orig_length(&mut self, orig_length: u32) -> &Self {
         self.orig_length = orig_length;
         self
     }
 
-    pub fn set_orig_checksum(&mut self, orig_checksum: u32) -> &WoffTableDirectoryEntryBuilder {
+    pub fn set_orig_checksum(&mut self, orig_checksum: u32) -> &Self {
         self.orig_checksum = orig_checksum;
         self
     }
@@ -369,15 +368,16 @@ impl WoffTableDirectoryEntryBuilder {
 
 /// WOFF offset table
 pub struct SfntOffsetTable {
-    version: u32,
     // 0x00010000 or 0x4F54544F ('OTTO')
-    pub num_tables: u16,
+    version: u32,
     // Number of tables.
-    search_range: u16,
+    pub num_tables: u16,
     // (Maximum power of 2 <= numTables) x 16.
-    entry_selector: u16,
+    search_range: u16,
     // Log2(maximum power of 2 <= numTables).
-    range_shift: u16, // NumTables x 16-searchRange.
+    entry_selector: u16,
+    // NumTables x 16-searchRange.
+    range_shift: u16,
 }
 
 impl SfntOffsetTable {
@@ -455,13 +455,14 @@ impl SfntOffsetTableBuilder {
 
 /// SFNT table record
 pub struct SfntTableRecord {
-    table_tag: u32,
     // Table identifier.
-    checksum: u32,
+    table_tag: u32,
     // CheckSum for this table.
-    offset: u32,
+    checksum: u32,
     // Offset from beginning of TrueType font file.
-    length: u32, // Length of this table.
+    offset: u32,
+    // Length of this table.
+    length: u32,
 }
 
 impl SfntTableRecord {
@@ -527,63 +528,66 @@ impl SfntTableRecordBuilder {
     }
 }
 
-///// SFNT header table
-//pub struct SfntHeaderTable {
-//    major_version: u16,
-//    // Major version number of the font header table — set to 1
-//    minor_version: u16,
-//    // Minor version number of the font header table — set to 0
-//    font_revision: u32,
-//    // Set by font manufacturer
-//    check_sum_adjustment: u32,
-//    // Check sum
-//    magic_number: u32,
-//    // Set to 0x5F0F3CF5 "OTTO"
-//    flags: u16,
-//    // Flags
-//    units_per_em: u16,
-//    // Set to a value from 16 to 16384. Any value in this range is valid
-//    created: [u32; 2],
-//    // Number of seconds since 12:00 midnight that started January 1st 1904 in GMT/UTC time zone. 64-bit integer
-//    modified: [u32; 2],
-//    // Number of seconds since 12:00 midnight that started January 1st 1904 in GMT/UTC time zone. 64-bit integer
-//    x_min: i16,
-//    // For all glyph bounding boxes
-//    y_min: i16,
-//    // For all glyph bounding boxes
-//    x_max: i16,
-//    // For all glyph bounding boxes
-//    y_max: i16,
-//    // For all glyph bounding boxes
-//    mac_style: u16,
-//    // Bit 0: Bold (if set to 1); Bit 1: Italic (if set to 1) Bit 2: Underline (if set to 1) Bit 3: Outline (if set to 1) Bit 4: Shadow (if set to 1) Bit 5: Condensed (if set to 1) Bit 6: Extended (if set to 1) Bits 7–15: Reserved (set to 0).
-//    lowest_rec_ppem: u16,
-//    // Smallest readable size in pixels.
-//    font_direction_hint: i16,
-//    // Deprecated. Only strongly left to right but also contains neutrals
-//    index_to_loc_format: i16,
-//    // 0 for short offsets (Offset16), 1 for long (Offset32).
-//    glyph_data_format: i16, // 0 for current format.
-//}
-//
-///// SFNT header table builder
-//pub struct SfntHeaderTableBuilder {
-//    major_version: u16,
-//    minor_version: u16,
-//    font_revision: u32,
-//    check_sum_adjustment: u32,
-//    magic_number: u32,
-//    flags: u16,
-//    units_per_em: u16,
-//    created: [u32; 2],
-//    modified: [u32; 2],
-//    x_min: i16,
-//    y_min: i16,
-//    x_max: i16,
-//    y_max: i16,
-//    mac_style: u16,
-//    lowest_rec_ppem: u16,
-//    font_direction_hint: i16,
-//    index_to_loc_format: i16,
-//    glyph_data_format: i16,
-//}
+/// SFNT header table
+#[allow(dead_code)]
+pub struct SfntHeaderTable {
+    // Major version number of the font header table — set to 1
+    major_version: u16,
+    // Minor version number of the font header table — set to 0
+    minor_version: u16,
+    // Set by font manufacturer
+    font_revision: u32,
+    // Check sum
+    check_sum_adjustment: u32,
+    // Set to 0x5F0F3CF5 "OTTO"
+    magic_number: u32,
+    // Flags
+    flags: u16,
+    // Set to a value from 16 to 16384. Any value in this range is valid
+    units_per_em: u16,
+    // Number of seconds since 12:00 midnight that started January 1st 1904 in GMT/UTC time zone. 64-bit integer
+    created: [u32; 2],
+    // Number of seconds since 12:00 midnight that started January 1st 1904 in GMT/UTC time zone. 64-bit integer
+    modified: [u32; 2],
+    // For all glyph bounding boxes
+    x_min: i16,
+    // For all glyph bounding boxes
+    y_min: i16,
+    // For all glyph bounding boxes
+    x_max: i16,
+    // For all glyph bounding boxes
+    y_max: i16,
+    // Bit 0: Bold (if set to 1); Bit 1: Italic (if set to 1) Bit 2: Underline (if set to 1) Bit 3: Outline (if set to 1) Bit 4: Shadow (if set to 1) Bit 5: Condensed (if set to 1) Bit 6: Extended (if set to 1) Bits 7–15: Reserved (set to 0).
+    mac_style: u16,
+    // Smallest readable size in pixels.
+    lowest_rec_ppem: u16,
+    // Deprecated. Only strongly left to right but also contains neutrals
+    font_direction_hint: i16,
+    // 0 for short offsets (Offset16), 1 for long (Offset32).
+    index_to_loc_format: i16,
+    // 0 for current format.
+    glyph_data_format: i16,
+}
+
+/// SFNT header table builder
+#[allow(dead_code)]
+pub struct SfntHeaderTableBuilder {
+    major_version: u16,
+    minor_version: u16,
+    font_revision: u32,
+    check_sum_adjustment: u32,
+    magic_number: u32,
+    flags: u16,
+    units_per_em: u16,
+    created: [u32; 2],
+    modified: [u32; 2],
+    x_min: i16,
+    y_min: i16,
+    x_max: i16,
+    y_max: i16,
+    mac_style: u16,
+    lowest_rec_ppem: u16,
+    font_direction_hint: i16,
+    index_to_loc_format: i16,
+    glyph_data_format: i16,
+}

@@ -39,6 +39,15 @@ use std::fs::File;
 use std::io::{BufReader, Read};
 use crate::structures::Range;
 
+#[cfg(test)]
+mod tests {}
+
+#[allow(dead_code)]
+pub enum Status {}
+
+#[allow(dead_code)]
+pub enum Error {}
+
 /// Reads data from file to buffer
 pub fn read_file(path: &str, buf: &mut Vec<u8>) -> usize {
     let file = File::open(path).unwrap();
@@ -46,7 +55,7 @@ pub fn read_file(path: &str, buf: &mut Vec<u8>) -> usize {
     reader.read_to_end(buf).unwrap()
 }
 
-/// Works functions for reading data
+/// This one reads unsigned 32-bits value in big endian order
 pub fn read_u32_be(val: &mut Vec<u8>, range: Box<Range>) -> u32 {
     let mut part_vec: Vec<u8> = vec![];
     part_vec.extend(val.get(range.get_start_offset()..range.get_end_offset()).unwrap());
@@ -55,6 +64,7 @@ pub fn read_u32_be(val: &mut Vec<u8>, range: Box<Range>) -> u32 {
     rez
 }
 
+/// This one reads unsigned 16-bits value in big endian order
 pub fn read_u16_be(val: &mut Vec<u8>, range: Box<Range>) -> u16 {
     let mut part_vec: Vec<u8> = vec![];
     part_vec.extend(val.get(range.get_start_offset()..range.get_end_offset()).unwrap());
@@ -63,6 +73,8 @@ pub fn read_u16_be(val: &mut Vec<u8>, range: Box<Range>) -> u16 {
     rez
 }
 
+/// Calculates the entrySelector that is log2(maximum power of 2 <= numTables).
+/// It tells how many iterations of the search loop are needed. (i.e. how many times to cut the range in half)
 pub fn calculate_entry_selector(mut number: u16) -> u16 {
     let mut res: u16 = 0;
     while number > 16 {
@@ -72,10 +84,16 @@ pub fn calculate_entry_selector(mut number: u16) -> u16 {
     res
 }
 
+/// Calculates rangeShift (numTables*16-searchRange)
 pub fn calculate_range_shift(num_tables: u16, serach_range: u16) -> u16 {
     num_tables * 16 - serach_range
 }
 
+/// Calculates search range for every SFNT data table.
+/// This one has to be (maximum power of 2 <= numTables)*16.
+///  For example:
+///  result = Math.pow(2, Math.floor(Math.log(num_ables) / Math.log(2)));
+///  result * 16;
 pub fn calculate_search_range(num_tables: u16) -> u16 {
     let mut sr = num_tables;
     sr = sr | (sr >> 1);
@@ -87,11 +105,15 @@ pub fn calculate_search_range(num_tables: u16) -> u16 {
     sr
 }
 
+/// Calculates padded length for structure that has to be aligned by 4-bytes.
 pub fn calculate_padded_len(orig_len: u32, sfnt_table_data_len: usize) -> u32 {
-    let aligned_len = (orig_len + 3) &!3;
+    let aligned_len = (orig_len + 3) & !3;
     aligned_len - sfnt_table_data_len as u32
 }
 
+/// Works only with the little endian order.
+/// Result slice will be in the little endian order!
+#[allow(dead_code)]
 pub unsafe fn any_as_u8_slice<T: Sized>(p: &T) -> &[u8] {
     std::slice::from_raw_parts(
         (p as *const T) as *const u8,
@@ -99,6 +121,8 @@ pub unsafe fn any_as_u8_slice<T: Sized>(p: &T) -> &[u8] {
     )
 }
 
+/// Transforms unsigned 32-bits number to vector of bytes.
+/// Result vector contains values in big endian order!
 pub fn transform_u32_to_u8_vec(x: u32) -> Vec<u8> {
     let mut result_vec: Vec<u8> = Vec::with_capacity(4);
     result_vec.push(((x >> 24) & 0xff) as u8);
@@ -108,6 +132,8 @@ pub fn transform_u32_to_u8_vec(x: u32) -> Vec<u8> {
     result_vec
 }
 
+/// Transforms unsigned 16-bits number to vector of bytes.
+/// Result vector contains values in big endian order!
 pub fn transform_u16_to_u8_vec(x: u16) -> Vec<u8> {
     let mut result_vec: Vec<u8> = Vec::with_capacity(2);
     result_vec.push(((x >> 8) & 0xff) as u8);
