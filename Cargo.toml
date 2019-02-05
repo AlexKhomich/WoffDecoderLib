@@ -7,3 +7,7 @@ edition = "2018"
 [dependencies]
 byteorder = "1.2.7"
 flate2 = "1.0.6"
+
+[lib]
+name = "woffdecoder"
+crate-type = ["staticlib", "cdylib"]

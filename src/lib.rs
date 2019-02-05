@@ -11,20 +11,16 @@ use std::mem::size_of;
 use flate2::{Decompress, FlushDecompress};
 
 /// Decode .woff file data to SFNT bytes
-pub fn decode_from_file(path: &str, mut dest_buf: *mut u8) -> usize {
+#[no_mangle]
+pub extern fn decode_from_file(path: &str, mut dest_buf: *mut u8) -> usize {
     let mut buf: Vec<u8> = vec![];
     read_file(path, &mut buf);
-    dest_buf = decode_internal(&mut buf);
-
-    // test data
-    let mut result: Vec<u8> = vec![2, 5, 10, 20];
-    dest_buf = result.as_mut_ptr();
-    result.len()
-    //end test data
+    decode_internal(&mut buf, dest_buf)
 }
 
 /// Decode WOFF data to SFNT data
-pub fn decode_from_data(source_buf: *const u8, woff_data_size: usize, dest_buf: *mut u8) -> usize {
+#[no_mangle]
+pub extern fn decode_from_data(source_buf: *const u8, woff_data_size: usize, dest_buf: *mut u8) -> usize {
     unimplemented!()
 }
 
@@ -118,7 +114,8 @@ fn assemble_sfnt_binary(
     sfnt_header: SfntOffsetTable,
     table_records: Vec<SfntTableRecord>,
     data_tables: Vec<Vec<u8>>,
-) -> *mut u8 {
+    mut decoded_data: *mut u8
+) -> usize {
     let mut sfnt_data_vec: Vec<u8> = vec![];
     let mut sfnt_header_data = sfnt_header.transform_to_u8_vec();
     sfnt_data_vec.append(&mut sfnt_header_data);
@@ -131,11 +128,13 @@ fn assemble_sfnt_binary(
     for mut table in data_tables {
         sfnt_data_vec.append(&mut table)
     }
-    sfnt_data_vec.as_mut_ptr()
+    let decoded_data_len = sfnt_data_vec.len();
+    decoded_data = sfnt_data_vec.as_mut_ptr();
+    decoded_data_len
 }
 
 /// Main function to decode and construct SFNT file or data form WOFF file
-fn decode_internal(mut buf: &mut Vec<u8>) -> *mut u8 {
+fn decode_internal(mut buf: &mut Vec<u8>, mut decoded_data: *mut u8) -> usize {
     // We need to know sizes of several SFNT and WOFF structures.
     let sfnt_offset_table_size = size_of::<SfntOffsetTable>();
     let sfnt_table_record_size = size_of::<SfntTableRecord>();
@@ -226,5 +225,5 @@ fn decode_internal(mut buf: &mut Vec<u8>) -> *mut u8 {
         sfnt_table_data_vec.push(sfnt_table_data);
     }
 
-    assemble_sfnt_binary(sfnt_offset_table, sfnt_table_records_vec, sfnt_table_data_vec)
+    assemble_sfnt_binary(sfnt_offset_table, sfnt_table_records_vec, sfnt_table_data_vec, decoded_data)
 }
