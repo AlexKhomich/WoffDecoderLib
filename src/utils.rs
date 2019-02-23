@@ -85,8 +85,8 @@ pub fn calculate_entry_selector(mut number: u16) -> u16 {
 }
 
 /// Calculates rangeShift (numTables*16-searchRange)
-pub fn calculate_range_shift(num_tables: u16, serach_range: u16) -> u16 {
-    num_tables * 16 - serach_range
+pub fn calculate_range_shift(num_tables: u16, search_range: u16) -> u16 {
+    num_tables * 16 - search_range
 }
 
 /// Calculates search range for every SFNT data table.
@@ -121,19 +121,37 @@ pub unsafe fn any_as_u8_slice<T: Sized>(p: &T) -> &[u8] {
     )
 }
 
+/// Transforms unsigned 32-bits number to array of bytes.
+/// Result vector contains values in big endian order!
+pub fn u32_to_u8_array(x: u32) -> [u8; 4] {
+    let mut result: [u8; 4] = [0; 4];
+    result[0] = ((x >> 24) & 0xff) as u8;
+    result[1] = ((x >> 16) & 0xff) as u8;
+    result[2] = ((x >> 8) & 0xff) as u8;
+    result[3] = (x & 0xff) as u8;
+    result
+}
+
+/// Transforms unsigned 16-bits number to array of bytes.
+/// Result vector contains values in big endian order!
+pub fn u16_to_u8_array(x: u16) -> [u8; 2] {
+    let mut result: [u8; 2] = [0; 2];
+    result[0] = ((x >> 8) & 0xff) as u8;
+    result[1] = (x & 0xff) as u8;
+    result
+}
+
 /// Transforms unsigned 32-bits number to vector of bytes.
 /// Result vector contains values in big endian order!
+#[allow(dead_code)]
 pub fn transform_u32_to_u8_vec(x: u32) -> Vec<u8> {
-    let mut result_vec: Vec<u8> = Vec::with_capacity(4);
-    result_vec.push(((x >> 24) & 0xff) as u8);
-    result_vec.push(((x >> 16) & 0xff) as u8);
-    result_vec.push(((x >> 8) & 0xff) as u8);
-    result_vec.push((x & 0xff) as u8);
-    result_vec
+    let result: [u8; 4] = x.to_be_bytes();
+    result.to_vec()
 }
 
 /// Transforms unsigned 16-bits number to vector of bytes.
 /// Result vector contains values in big endian order!
+#[allow(dead_code)]
 pub fn transform_u16_to_u8_vec(x: u16) -> Vec<u8> {
     let mut result_vec: Vec<u8> = Vec::with_capacity(2);
     result_vec.push(((x >> 8) & 0xff) as u8);
