@@ -15,7 +15,7 @@ struct BaseRange {
 }
 
 pub struct WoffHeaderRange {
-    range: Box<BaseRange>,
+    range: BaseRange,
 }
 
 impl Range for WoffHeaderRange {
@@ -34,56 +34,56 @@ impl Range for WoffHeaderRange {
 
 impl WoffHeaderRange {
     pub fn get_signature_range() -> Self {
-        WoffHeaderRange { range: Box::new(BaseRange { start_byte: 0, end_byte: 4, size: 4 }) }
+        WoffHeaderRange { range: BaseRange { start_byte: 0, end_byte: 4, size: 4 } }
     }
 
     pub fn get_flavor_range() -> Self {
-        WoffHeaderRange { range: Box::new(BaseRange { start_byte: 4, end_byte: 8, size: 4 }) }
+        WoffHeaderRange { range: BaseRange { start_byte: 4, end_byte: 8, size: 4 } }
     }
 
     pub fn get_length_range() -> Self {
-        WoffHeaderRange { range: Box::new(BaseRange { start_byte: 8, end_byte: 12, size: 4 }) }
+        WoffHeaderRange { range: BaseRange { start_byte: 8, end_byte: 12, size: 4 } }
     }
 
     pub fn get_num_tables_range() -> Self {
-        WoffHeaderRange { range: Box::new(BaseRange { start_byte: 12, end_byte: 14, size: 2 }) }
+        WoffHeaderRange { range: BaseRange { start_byte: 12, end_byte: 14, size: 2 } }
     }
 
     pub fn get_total_sfnt_size_range() -> Self {
-        WoffHeaderRange { range: Box::new(BaseRange { start_byte: 16, end_byte: 20, size: 4 }) }
+        WoffHeaderRange { range: BaseRange { start_byte: 16, end_byte: 20, size: 4 } }
     }
 
     pub fn get_major_version_range() -> Self {
-        WoffHeaderRange { range: Box::new(BaseRange { start_byte: 20, end_byte: 22, size: 2 }) }
+        WoffHeaderRange { range: BaseRange { start_byte: 20, end_byte: 22, size: 2 } }
     }
 
     pub fn get_minor_version_range() -> Self {
-        WoffHeaderRange { range: Box::new(BaseRange { start_byte: 22, end_byte: 24, size: 2 }) }
+        WoffHeaderRange { range: BaseRange { start_byte: 22, end_byte: 24, size: 2 } }
     }
 
     pub fn get_meta_offset_range() -> Self {
-        WoffHeaderRange { range: Box::new(BaseRange { start_byte: 24, end_byte: 28, size: 4 }) }
+        WoffHeaderRange { range: BaseRange { start_byte: 24, end_byte: 28, size: 4 } }
     }
 
     pub fn get_meta_length_range() -> Self {
-        WoffHeaderRange { range: Box::new(BaseRange { start_byte: 28, end_byte: 32, size: 4 }) }
+        WoffHeaderRange { range: BaseRange { start_byte: 28, end_byte: 32, size: 4 } }
     }
 
     pub fn get_meta_orgig_length_range() -> Self {
-        WoffHeaderRange { range: Box::new(BaseRange { start_byte: 32, end_byte: 36, size: 4 }) }
+        WoffHeaderRange { range: BaseRange { start_byte: 32, end_byte: 36, size: 4 } }
     }
 
     pub fn get_priv_offset_range() -> Self {
-        WoffHeaderRange { range: Box::new(BaseRange { start_byte: 36, end_byte: 40, size: 4 }) }
+        WoffHeaderRange { range: BaseRange { start_byte: 36, end_byte: 40, size: 4 } }
     }
 
     pub fn get_priv_length_range() -> Self {
-        WoffHeaderRange { range: Box::new(BaseRange { start_byte: 40, end_byte: 44, size: 4 }) }
+        WoffHeaderRange { range: BaseRange { start_byte: 40, end_byte: 44, size: 4 } }
     }
 }
 
 pub struct WoffTableDirectoryEntryRange {
-    range: Box<BaseRange>
+    range: BaseRange
 }
 
 impl Range for WoffTableDirectoryEntryRange {
@@ -103,45 +103,35 @@ impl Range for WoffTableDirectoryEntryRange {
 impl WoffTableDirectoryEntryRange {
     pub fn construct_tag_range(start_byte: usize, len: usize) -> Self {
         WoffTableDirectoryEntryRange {
-            range: Box::new(
-                BaseRange { start_byte, end_byte: start_byte + len, size: len }
-            )
+            range: BaseRange { start_byte, end_byte: start_byte + len, size: len }
         }
     }
 
     pub fn construct_offset_range(mut start_byte: usize, len: usize) -> Self {
         start_byte += 4;
         WoffTableDirectoryEntryRange {
-            range: Box::new(
-                BaseRange { start_byte, end_byte: start_byte + len, size: len }
-            )
+            range: BaseRange { start_byte, end_byte: start_byte + len, size: len }
         }
     }
 
     pub fn construct_comp_length(mut start_byte: usize, len: usize) -> Self {
         start_byte += 8;
         WoffTableDirectoryEntryRange {
-            range: Box::new(
-                BaseRange { start_byte, end_byte: start_byte + len, size: len }
-            )
+            range: BaseRange { start_byte, end_byte: start_byte + len, size: len }
         }
     }
 
     pub fn construct_orig_length(mut start_byte: usize, len: usize) -> Self {
         start_byte += 12;
         WoffTableDirectoryEntryRange {
-            range: Box::new(
-                BaseRange { start_byte, end_byte: start_byte + len, size: len }
-            )
+            range: BaseRange { start_byte, end_byte: start_byte + len, size: len }
         }
     }
 
     pub fn construct_orig_checksum(mut start_byte: usize, len: usize) -> Self {
         start_byte += 16;
         WoffTableDirectoryEntryRange {
-            range: Box::new(
-                BaseRange { start_byte, end_byte: start_byte + len, size: len }
-            )
+            range: BaseRange { start_byte, end_byte: start_byte + len, size: len }
         }
     }
 }
