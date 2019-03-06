@@ -31,15 +31,20 @@ pub extern "C" fn decode_from_file_wrapped(path: *const c_char, decoded_data_len
 }
 
 /// Decode .woff file data to SFNT bytes
-pub extern "C" fn decode_from_file(path: &str, decoded_data_len: &mut usize) -> *mut u8 {
+pub fn decode_from_file(path: &str, decoded_data_len: &mut usize) -> *mut u8 {
     let mut buf: Vec<u8> = vec![];
     read_file(path, &mut buf);
     decode_internal(&mut buf, decoded_data_len)
 }
 
-/// Decode WOFF data to SFNT data
+/// Decode WOFF data to SFNT data wrapped
 #[no_mangle]
-pub extern "C" fn decode_from_data(source_buf: *const u8, woff_data_size: usize, decoded_data_len: &mut usize) -> *mut u8 {
+pub extern "C" fn decode_from_data_wrapped(source_buf: *const u8, woff_data_size: usize, decoded_data_len: &mut usize) -> *mut u8 {
+    unimplemented!()
+}
+
+/// Decode WOFF data to SFNT data wrapped
+pub fn decode_from_data(source_buf: *const u8, woff_data_size: usize, decoded_data_len: &mut usize) -> *mut u8 {
     unimplemented!()
 }
 
