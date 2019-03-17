@@ -42,12 +42,6 @@ use crate::structures::Range;
 #[cfg(test)]
 mod tests {}
 
-#[allow(dead_code)]
-pub enum Status {}
-
-#[allow(dead_code)]
-pub enum Error {}
-
 /// Reads data from file to buffer
 pub fn read_file(path: &str, buf: &mut Vec<u8>) -> usize {
     let file = File::open(path).unwrap();
