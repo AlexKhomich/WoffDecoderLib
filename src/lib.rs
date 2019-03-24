@@ -178,7 +178,7 @@ fn decode_internal(mut buf: &mut Vec<u8>) -> *mut Result {
         // check if dir_entry parameters are correct
         // and if not return Result with error
         if (woff_table_dir_entry.orig_length < woff_table_dir_entry.comp_length)
-            || (woff_table_dir_entry.offset as usize > buf.len() - woff_table_dir_entry.comp_length) {
+            || (woff_table_dir_entry.offset as usize > buf.len() - woff_table_dir_entry.comp_length as usize) {
             error = Error::InvalidWoffStructure;
             return create_error_result(error)
         }
