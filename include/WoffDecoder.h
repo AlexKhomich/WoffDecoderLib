@@ -14,6 +14,10 @@ typedef enum {
     OutBufferFull,
     BuffError,
     DecompressError,
+    InvalidWoffSize,
+    InputBufferIsEmpty,
+    InvalidWoffSignature,
+    InvalidWoffStructure
 } Error;
 
 typedef struct {

@@ -36,7 +36,7 @@ ottoTag = 0x4f54544f; // 'otto' - OpenType font
 use std::io::Cursor;
 use byteorder::{BigEndian, ReadBytesExt};
 use std::fs::File;
-use std::io::{BufReader, Read};
+use std::io::{BufReader, Read, Write};
 use crate::structures::Range;
 
 #[cfg(test)]
@@ -47,6 +47,13 @@ pub fn read_file(path: &str, buf: &mut Vec<u8>) -> usize {
     let file = File::open(path).unwrap();
     let mut reader = BufReader::new(file);
     reader.read_to_end(buf).unwrap()
+}
+
+/// Creates .ttf file and writes all decoded data to this file
+pub fn create_ttf_file(data_vec: Vec<u8>, file_name: &str) {
+    let mut file = File::create(file_name).unwrap();
+    let data_slice = data_vec.as_slice();
+    file.write_all(data_slice).unwrap();
 }
 
 /// This one reads unsigned 32-bits value in big endian order

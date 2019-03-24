@@ -10,8 +10,8 @@ use std::mem::size_of;
 use flate2::{Decompress, FlushDecompress};
 use std::ffi::CStr;
 use std::os::raw::c_char;
-use std::fs::{OpenOptions, File};
-use std::io::{BufWriter, BufReader, Read, BufRead, Write};
+use std::fs::File;
+use std::io::Write;
 
 
 #[repr(C)]
@@ -22,6 +22,7 @@ pub struct Result {
 }
 
 #[repr(C)]
+#[derive(PartialEq)]
 pub enum Error {
     None,
     DecodeError,
@@ -29,6 +30,10 @@ pub enum Error {
     OutBufferFull,
     BuffError,
     DecompressError,
+    InvalidWoffSize,
+    InputBufferIsEmpty,
+    InvalidWoffSignature,
+    InvalidWoffStructure
 }
 
 /// Decode .woff file data to SFNT bytes wrapped
@@ -55,13 +60,6 @@ pub unsafe extern fn destroy_buffer(data: *mut Result) {
     }
 }
 
-/// Decode .woff file data to SFNT bytes
-pub fn decode_from_file(path: &str) -> *mut Result {
-    let mut buf: Vec<u8> = vec![];
-    read_file(path, &mut buf);
-    decode_internal(&mut buf)
-}
-
 /// Decode WOFF data to SFNT data wrapped
 #[no_mangle]
 pub unsafe extern fn decode_from_data_wrapped(
@@ -80,9 +78,22 @@ pub unsafe extern fn decode_from_data_wrapped(
     }
 }
 
-/// Decode WOFF data to SFNT data
-pub fn decode_from_data(source_buf: *const u8, woff_data_size: usize) -> *mut Result {
-    unimplemented!()
+/// Decode .woff file data to SFNT bytes
+pub fn decode_from_file(path: &str) -> *mut Result {
+    let mut buf: Vec<u8> = vec![];
+    read_file(path, &mut buf);
+    decode_internal(&mut buf)
+}
+
+/// Decode WOFF data from vector  to SFNT data
+pub fn decode_from_vec(mut buf: &mut Vec<u8>) -> *mut Result {
+    decode_internal(buf)
+}
+
+/// Decode WOFF data from slice to SFNT data
+pub fn decode_from_slice(mut buf: &[u8]) -> *mut Result {
+    let mut data: Vec<u8> = Vec::from(buf);
+    decode_internal(&mut data)
 }
 
 /// Creates Result structure with null decoded data pointer,
@@ -98,9 +109,9 @@ fn create_error_result(err: Error) -> *mut Result {
 }
 
 /// Sanity check for WOFF file
-fn sanity_check(buf: &mut Vec<u8>) -> bool {
-    if buf.is_empty() { return false }
-    if buf.len() < std::mem::size_of::<WoffHeader>() { return false }
+fn sanity_check(buf: &mut Vec<u8>) -> Error {
+    if buf.is_empty() { return Error::InputBufferIsEmpty }
+    if buf.len() < size_of::<WoffHeader>() { return Error::InvalidWoffSize }
 
     let mut woff_signature_vec: Vec<u8> = vec![b'w', b'O', b'F', b'F'];
     let woff_signature = read_u32_be(
@@ -109,17 +120,29 @@ fn sanity_check(buf: &mut Vec<u8>) -> bool {
     );
     let woff_header = create_woff_header(buf);
 
-    if woff_header.signature != woff_signature { return false }
-    if woff_header.length != buf.len() as u32 { return false }
+    if woff_header.signature != woff_signature { return Error::InvalidWoffSignature }
+    if woff_header.length != buf.len() as u32 { return Error::InvalidWoffSize }
 
-    //TODO: remaining logic will be implemented soon
-    true
+    let sfnt_num_tables = woff_header.num_tables;
+    if buf.len() < (size_of::<WoffHeader>()
+        + sfnt_num_tables as usize * size_of::<WoffTableDirectoryEntry>()) {
+        return Error::InvalidWoffSize
+    }
+
+    // we do not check other things 'cause it may lead to performance issues
+    // we can return error a little bit later if SFNT tables have corrupted data
+    Error::None
 }
 
 /// Main function to decode and construct SFNT file or data form WOFF file
 fn decode_internal(mut buf: &mut Vec<u8>) -> *mut Result {
 
-    let mut error = Error::None;
+    let mut error  = sanity_check(buf);
+
+    // return result with error from sanity check if error occurred
+    if error != Error::None {
+        return create_error_result(error)
+    }
 
     // We need to know sizes of several SFNT and WOFF structures.
     let sfnt_offset_table_size = size_of::<SfntOffsetTable>();
@@ -152,6 +175,13 @@ fn decode_internal(mut buf: &mut Vec<u8>) -> *mut Result {
     for i in 0..sfnt_num_tables as usize {
         let next_table_offset = woff_header_size + (i * woff_table_directory_size);
         let woff_table_dir_entry = create_woff_table_dir_entry(&mut buf, next_table_offset);
+        // check if dir_entry parameters are correct
+        // and if not return Result with error
+        if (woff_table_dir_entry.orig_length < woff_table_dir_entry.comp_length)
+            || (woff_table_dir_entry.offset as usize > buf.len() - woff_table_dir_entry.comp_length) {
+            error = Error::InvalidWoffStructure;
+            return create_error_result(error)
+        }
         woff_table_dir_entry_container.push(woff_table_dir_entry);
         sfnt_table_offset += sfnt_table_record_size
     }
@@ -190,19 +220,14 @@ fn decode_internal(mut buf: &mut Vec<u8>) -> *mut Result {
                         error = Error::None
                     };
                 },
-                Err(err) => {
+                Err(_) => {
                     error = Error::DecompressError;
                     return create_error_result(error)
                 },
             };
 
-            println!("total_bytes_in: {}, total_bytes_out: {}",
-                     decompressor.total_in(), decompressor.total_out());
         } else {
             sfnt_table_data.extend_from_slice(source_slice);
-
-            println!("total_bytes_in: {}, total_bytes_out: {}",
-                     source_slice.len(), sfnt_table_data.len());
         }
 
         let snft_table_record = SfntTableRecord {
@@ -292,7 +317,6 @@ fn assemble_sfnt_binary(
 
     for record in table_records {
         let mut record_data = record.transform_to_u8_vec();
-        let record_slice_size = record_data.len();
         sfnt_data_vec.append(&mut record_data);
     }
 
@@ -316,8 +340,7 @@ fn create_sfnt(
     sfnt_header: SfntOffsetTable,
     table_records: Vec<SfntTableRecord>,
     data_tables: Vec<Vec<u8>>,
-    write_to_file: bool,
-    error: Error
+    write_to_file: bool
 ) -> *mut Result {
 
     let mut sfnt_header_data = sfnt_header.transform_to_u8_vec();
@@ -331,7 +354,6 @@ fn create_sfnt(
 
     for record in table_records {
         let mut record_data = record.transform_to_u8_vec();
-        let record_slice_size = record_data.len();
         sfnt_data_vec.append(&mut record_data);
     }
 
@@ -352,12 +374,4 @@ fn create_sfnt(
         error: Error::None
     };
     Box::into_raw(Box::new(result_buffer))
-}
-
-/// Creates .ttf file and writes all decoded data to this file
-fn create_ttf_file(data_vec: Vec<u8>, file_name: &str) {
-    let mut file = File::create(file_name).unwrap();
-    let data_slice = data_vec.as_slice();
-    let len = data_slice.len();
-    file.write_all(data_slice).unwrap();
 }
