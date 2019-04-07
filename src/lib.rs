@@ -161,7 +161,7 @@ pub unsafe extern fn decode_data_to_file_wrapped(
     let c_srt = CStr::from_ptr(path);
     let str_path = match c_srt.to_str() {
         Ok(string) => string,
-        Err(_) => "error"
+        Err(_) => return FileRWResult::create_error_result(Error::InputPathError)
     };
 
     if !source_buf.is_null() && woff_data_size > 0 {
