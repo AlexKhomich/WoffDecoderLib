@@ -97,7 +97,7 @@ pub unsafe extern fn decode_from_file_wrapped(path: *const c_char) -> *mut Decod
     let c_srt = CStr::from_ptr(path);
     let str_path = match c_srt.to_str() {
         Ok(string) => string,
-        Err(_) => "error"
+        Err(_) => return DecodedResult::create_error_result(Error::InputPathError)
     };
     let mut buf: Vec<u8> = vec![];
     let read_result = read_file(str_path, &mut buf);
