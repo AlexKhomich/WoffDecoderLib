@@ -38,44 +38,91 @@ use byteorder::{BigEndian, ReadBytesExt};
 use std::fs::File;
 use std::io::{BufReader, Read, Write};
 use crate::structures::Range;
+use std::error::Error;
 
 #[cfg(test)]
 mod tests {}
 
 /// Reads data from file to buffer
-pub fn read_file(path: &str, buf: &mut Vec<u8>) -> usize {
-    let file = File::open(path).unwrap();
-    let mut reader = BufReader::new(file);
-    reader.read_to_end(buf).unwrap()
+/// If error occurs - prints path to file and err description to stdout
+pub fn read_file(path: &str, buf: &mut Vec<u8>) -> crate::FileRWResult {
+    let mut file_size: usize = 0;
+    let mut error = crate::Error::None;
+    match File::open(path) {
+        Ok(file) => {
+            let mut reader = BufReader::new(file);
+            match reader.read_to_end(buf) {
+                Ok(result_size) => { file_size = result_size },
+                Err(err) => {
+                    println!("Couldn't read the file: {}, cause: {}", path, err.description());
+                    error = crate::Error::ReadFromFileError;
+                },
+            }
+        },
+        Err(err) => {
+            println!("Couldn't open the file: {}, cause, {}", path, err.description());
+            error = crate::Error::OpenFileError
+        },
+    }
+    crate::FileRWResult {
+        data_len: file_size,
+        error: error
+    }
 }
 
 /// Creates .ttf file and writes all decoded data to this file
-pub fn create_ttf_file(data_vec: Vec<u8>, file_name: &str) {
-    let mut file = File::create(file_name).unwrap();
-    let data_slice = data_vec.as_slice();
-    file.write_all(data_slice).unwrap();
+/// If error occurs - prints path to file and err description to stdout
+pub fn create_ttf_file(data_vec: &Vec<u8>, path_to_out_file: &str) -> crate::FileRWResult {
+    let mut error = crate::Error::None;
+    match File::create(path_to_out_file) {
+        Ok(mut file) => {
+            let data_slice = data_vec.as_slice();
+            match file.write_all(data_slice) {
+                Ok(_) => {},
+                Err(err) => {
+                    println!("Couldn't write to file: {}, cause: {}", path_to_out_file, err.description());
+                    error = crate::Error::WriteToFileError;
+                },
+            };
+        },
+        Err(err) => {
+            println!("Couldn't create the file: {}, cause, {}", path_to_out_file, err.description());
+            error = crate::Error::CreateFileError;
+        },
+    };
+    crate::FileRWResult {
+        data_len: data_vec.len(),
+        error: error
+    }
 }
 
 /// This one reads unsigned 32-bits value in big endian order
+/// If error occurs - panic with message
 pub fn read_u32_be(val: &mut Vec<u8>, range: Box<Range>) -> u32 {
     let mut part_vec: Vec<u8> = vec![];
-    part_vec.extend(val.get(range.get_start_offset()..range.get_end_offset()).unwrap());
+    part_vec.extend(val.get(
+        range.get_start_offset()..range.get_end_offset()
+    ).expect("Error: couldn't get range of data from buffer"));
     let mut rdr = Cursor::new(part_vec);
-    let rez = rdr.read_u32::<BigEndian>().unwrap();
+    let rez = rdr.read_u32::<BigEndian>().expect("Error: couldn't read u32 value from buffer");
     rez
 }
 
 /// This one reads unsigned 16-bits value in big endian order
+/// If error occurs - panic with message
 pub fn read_u16_be(val: &mut Vec<u8>, range: Box<Range>) -> u16 {
     let mut part_vec: Vec<u8> = vec![];
-    part_vec.extend(val.get(range.get_start_offset()..range.get_end_offset()).unwrap());
+    part_vec.extend(val.get(
+        range.get_start_offset()..range.get_end_offset()
+    ).expect("Error: couldn't get range of data from buffer"));
     let mut rdr = Cursor::new(part_vec);
-    let rez = rdr.read_u16::<BigEndian>().unwrap();
+    let rez = rdr.read_u16::<BigEndian>().expect("Error: couldn't read u16 value from buffer");
     rez
 }
 
 /// Calculates the entrySelector that is log2(maximum power of 2 <= numTables).
-/// It tells how many iterations of the search loop are needed. (i.e. how many times to cut the range in half)
+/// It tells how many iterations of the search loop are needed.
+/// (i.e. how many times to cut the range in half)
 pub fn calculate_entry_selector(mut number: u16) -> u16 {
     let mut res: u16 = 0;
     while number > 16 {
@@ -93,7 +140,7 @@ pub fn calculate_range_shift(num_tables: u16, search_range: u16) -> u16 {
 /// Calculates search range for every SFNT data table.
 /// This one has to be (maximum power of 2 <= numTables)*16.
 ///  For example:
-///  result = Math.pow(2, Math.floor(Math.log(num_ables) / Math.log(2)));
+///  result = Math.pow(2, Math.floor(Math.log(num_tables) / Math.log(2)));
 ///  result * 16;
 pub fn calculate_search_range(num_tables: u16) -> u16 {
     let mut sr = num_tables;
@@ -114,6 +161,7 @@ pub fn calculate_padded_len(orig_len: u32, sfnt_table_data_len: usize) -> u32 {
 
 /// Works only with the little endian order.
 /// Result slice will be in the little endian order!
+/// DO NOT USE it with Big endian order!!!
 #[allow(dead_code)]
 pub unsafe fn any_as_u8_slice<T: Sized>(p: &T) -> &[u8] {
     std::slice::from_raw_parts(
