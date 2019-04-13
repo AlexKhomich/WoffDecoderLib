@@ -15,7 +15,7 @@ use std::io::Write;
 
 /// Result trait
 trait Result {
-    fn create_error_result<T>(err: Error) -> *mut T;
+    fn create_error_result(err: Error) -> *mut Self;
 }
 
 /// Result structure with decoded SFNT data
@@ -35,12 +35,12 @@ pub struct DecodedResult {
 /// Creates `DecodedResult` structure with null decoded data pointer,
 /// zero decoded data length and error type fields
 impl Result for DecodedResult {
-    fn create_error_result<T>(err: Error) -> *mut T {
+    fn create_error_result(err: Error) -> *mut Self {
         Box::into_raw(Box::new(Self {
             decoded_data: std::ptr::null_mut(),
             decoded_data_len: 0,
             error: err,
-        })) as *mut T
+        }))
     }
 }
 
@@ -59,11 +59,11 @@ pub struct FileRWResult {
 /// Creates `FileRWResult` structure with null decoded data pointer,
 /// zero decoded data length and error type fields
 impl Result for FileRWResult {
-    fn create_error_result<T>(err: Error) -> *mut T {
+    fn create_error_result(err: Error) -> *mut Self {
         Box::into_raw(Box::new(Self {
             data_len: 0,
             error: err,
-        })) as *mut T
+        }))
     }
 }
 
@@ -389,7 +389,7 @@ fn decode_internal<T: Result>(mut buf: &mut Vec<u8>, out_file_path: Option<&str>
             sfnt_table_data_vec,
             path,
         );
-        return decoded_result;
+        return decoded_result as *mut T;
     } else {
         let decoded_result = assemble_sfnt_binary(
             sfnt_offset_table,
@@ -397,7 +397,7 @@ fn decode_internal<T: Result>(mut buf: &mut Vec<u8>, out_file_path: Option<&str>
             sfnt_table_data_vec,
             error,
         );
-        return decoded_result;
+        return decoded_result as *mut T;
     }
 }
 
@@ -442,12 +442,12 @@ fn create_woff_table_dir_entry(buf: &mut Vec<u8>, next_table_offset: usize) -> W
 }
 
 /// Creates SFNT binary from parts of data and returns raw pointer on this data
-fn assemble_sfnt_binary<T>(
+fn assemble_sfnt_binary(
     sfnt_header: SfntOffsetTable,
     table_records: Vec<SfntTableRecord>,
     data_tables: Vec<Vec<u8>>,
     error: Error,
-) -> *mut T {
+) -> *mut DecodedResult {
     let mut sfnt_header_data = sfnt_header.transform_to_u8_vec();
     let mut sfnt_data_vec: Vec<u8> = Vec::with_capacity(
         sfnt_header_data.len()
@@ -474,16 +474,16 @@ fn assemble_sfnt_binary<T>(
         decoded_data_len: data_len,
         error: error,
     };
-    Box::into_raw(Box::new(result_buffer)) as *mut T
+    Box::into_raw(Box::new(result_buffer))
 }
 
 /// Creates SFNT binary from parts of data and call function for creating .ttf file
-fn create_sfnt<T>(
+fn create_sfnt(
     sfnt_header: SfntOffsetTable,
     table_records: Vec<SfntTableRecord>,
     data_tables: Vec<Vec<u8>>,
     path_to_out_file: &str,
-) -> *mut T {
+) -> *mut FileRWResult {
     let mut sfnt_header_data = sfnt_header.transform_to_u8_vec();
     let mut sfnt_data_vec: Vec<u8> = Vec::with_capacity(
         sfnt_header_data.len()
@@ -502,5 +502,5 @@ fn create_sfnt<T>(
         sfnt_data_vec.append(&mut table)
     }
 
-    Box::into_raw(Box::new(create_ttf_file(&sfnt_data_vec, path_to_out_file))) as *mut T
+    Box::into_raw(Box::new(create_ttf_file(&sfnt_data_vec, path_to_out_file)))
 }

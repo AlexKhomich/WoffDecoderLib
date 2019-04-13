@@ -60,7 +60,7 @@ pub fn read_file(path: &str, buf: &mut Vec<u8>) -> crate::FileRWResult {
             }
         },
         Err(err) => {
-            println!("Couldn't open the file: {}, cause, {}", path, err.description());
+            println!("Couldn't open the file: {}, cause: {}", path, err.description());
             error = crate::Error::OpenFileError
         },
     }
@@ -86,7 +86,7 @@ pub fn create_ttf_file(data_vec: &Vec<u8>, path_to_out_file: &str) -> crate::Fil
             };
         },
         Err(err) => {
-            println!("Couldn't create the file: {}, cause, {}", path_to_out_file, err.description());
+            println!("Couldn't create the file: {}, cause: {}", path_to_out_file, err.description());
             error = crate::Error::CreateFileError;
         },
     };
