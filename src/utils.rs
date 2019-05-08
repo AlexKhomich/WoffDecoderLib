@@ -70,11 +70,11 @@ pub fn read_file(path: &str, buf: &mut Vec<u8>) -> crate::FileRWResult {
 
 /// Creates .ttf file and writes all decoded data to this file
 /// If error occurs - prints path to file and err description to stdout
-pub fn create_ttf_file(data_vec: &[u8], path_to_out_file: &str) -> crate::FileRWResult {
+pub fn create_ttf_file(data_slice: &[u8], path_to_out_file: &str) -> crate::FileRWResult {
     let mut error = crate::Error::None;
     match File::create(path_to_out_file) {
         Ok(mut file) => {
-            let data_slice = data_vec;
+            let data_slice = data_slice;
             match file.write_all(data_slice) {
                 Ok(_) => {},
                 Err(err) => {
@@ -89,7 +89,7 @@ pub fn create_ttf_file(data_vec: &[u8], path_to_out_file: &str) -> crate::FileRW
         },
     };
     crate::FileRWResult {
-        data_len: data_vec.len(),
+        data_len: data_slice.len(),
         error
     }
 }
