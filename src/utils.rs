@@ -40,8 +40,6 @@ use std::io::{BufReader, Read, Write};
 use crate::structures::Range;
 use std::error::Error;
 
-#[cfg(test)]
-mod tests {}
 
 /// Reads data from file to buffer
 /// If error occurs - prints path to file and err description to stdout
@@ -66,17 +64,17 @@ pub fn read_file(path: &str, buf: &mut Vec<u8>) -> crate::FileRWResult {
     }
     crate::FileRWResult {
         data_len: file_size,
-        error: error
+        error
     }
 }
 
 /// Creates .ttf file and writes all decoded data to this file
 /// If error occurs - prints path to file and err description to stdout
-pub fn create_ttf_file(data_vec: &Vec<u8>, path_to_out_file: &str) -> crate::FileRWResult {
+pub fn create_ttf_file(data_vec: &[u8], path_to_out_file: &str) -> crate::FileRWResult {
     let mut error = crate::Error::None;
     match File::create(path_to_out_file) {
         Ok(mut file) => {
-            let data_slice = data_vec.as_slice();
+            let data_slice = data_vec;
             match file.write_all(data_slice) {
                 Ok(_) => {},
                 Err(err) => {
@@ -92,7 +90,7 @@ pub fn create_ttf_file(data_vec: &Vec<u8>, path_to_out_file: &str) -> crate::Fil
     };
     crate::FileRWResult {
         data_len: data_vec.len(),
-        error: error
+        error
     }
 }
 
@@ -104,8 +102,7 @@ pub fn read_u32_be(val: &mut Vec<u8>, range: Box<Range>) -> u32 {
         range.get_start_offset()..range.get_end_offset()
     ).expect("Error: couldn't get range of data from buffer"));
     let mut rdr = Cursor::new(part_vec);
-    let rez = rdr.read_u32::<BigEndian>().expect("Error: couldn't read u32 value from buffer");
-    rez
+    rdr.read_u32::<BigEndian>().expect("Error: couldn't read u32 value from buffer")
 }
 
 /// This one reads unsigned 16-bits value in big endian order
@@ -116,8 +113,7 @@ pub fn read_u16_be(val: &mut Vec<u8>, range: Box<Range>) -> u16 {
         range.get_start_offset()..range.get_end_offset()
     ).expect("Error: couldn't get range of data from buffer"));
     let mut rdr = Cursor::new(part_vec);
-    let rez = rdr.read_u16::<BigEndian>().expect("Error: couldn't read u16 value from buffer");
-    rez
+    rdr.read_u16::<BigEndian>().expect("Error: couldn't read u16 value from buffer")
 }
 
 /// Calculates the entrySelector that is log2(maximum power of 2 <= numTables).
@@ -127,7 +123,7 @@ pub fn calculate_entry_selector(mut number: u16) -> u16 {
     let mut res: u16 = 0;
     while number > 16 {
         number >>= 1;
-        res = res + 1;
+        res += 1;
     }
     res
 }
