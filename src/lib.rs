@@ -18,7 +18,7 @@ mod tests {
 
     #[test]
     fn test_decode_to_buffer() {
-        let str_path = "/mnt/heap/dev/rust/decoder-wrapper-test/URWGothicL-Book.woff";
+        let str_path = "test_fonts/noto-sans-tc.woff";
         let mut buf: Vec<u8> = vec![];
         let read_result = read_file(str_path, &mut buf);
         let result = decode_internal::<DecodedResult>(&mut buf, None);
@@ -33,7 +33,7 @@ mod tests {
 
     #[test]
     fn test_read_file() {
-        let str_path = "/mnt/heap/dev/rust/decoder-wrapper-test/URWGothicL-Book.woff";
+        let str_path = "test_fonts/noto-sans-tc.woff";
         let mut buf: Vec<u8> = vec![];
         let read_result = read_file(str_path, &mut buf);
         unsafe {
@@ -48,7 +48,7 @@ mod tests {
 
     #[test]
     fn test_sanity_check() {
-        let str_path = "/mnt/heap/dev/rust/decoder-wrapper-test/URWGothicL-Book.woff";
+        let str_path = "test_fonts/noto-sans-tc.woff";
         let mut buf: Vec<u8> = vec![];
         let read_result = read_file(str_path, &mut buf);
         debug_assert!(sanity_check(&mut buf) == Error::None)
