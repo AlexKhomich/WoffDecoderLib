@@ -10,6 +10,7 @@ use std::mem::size_of;
 use flate2::{Decompress, FlushDecompress};
 use std::ffi::CStr;
 use std::os::raw::c_char;
+use bytebuffer::ByteBuffer;
 
 
 #[cfg(test)]
@@ -284,11 +285,8 @@ fn sanity_check(buf: &mut Vec<u8>) -> Error {
     if buf.is_empty() { return Error::InputBufferIsEmpty; }
     if buf.len() < size_of::<WoffHeader>() { return Error::InvalidWoffSize; }
 
-    let mut woff_signature_vec: Vec<u8> = vec![b'w', b'O', b'F', b'F'];
-    let woff_signature = read_u32_be(
-        &mut woff_signature_vec,
-        Box::new(WoffHeaderRange::get_signature_range()),
-    );
+    let mut woff_signature_buf = ByteBuffer::from_bytes(&[b'w', b'O', b'F', b'F']);
+    let woff_signature = read_u32_be(&mut woff_signature_buf);
     let woff_header = create_woff_header(buf);
 
     if woff_header.signature != woff_signature { return Error::InvalidWoffSignature; }
@@ -444,41 +442,34 @@ fn decode_internal<T: Result>(mut buf: &mut Vec<u8>, out_file_path: Option<&str>
 
 /// Function for creating WOFF header from raw data
 fn create_woff_header(buf: &mut Vec<u8>) -> WoffHeader {
+    let mut buffer = ByteBuffer::from_bytes(buf);
     WoffHeader {
-        signature: read_u32_be(buf, Box::new(WoffHeaderRange::get_signature_range())),
-        flavor: read_u32_be(buf, Box::new(WoffHeaderRange::get_flavor_range())),
-        length: read_u32_be(buf, Box::new(WoffHeaderRange::get_length_range())),
-        num_tables: read_u16_be(buf, Box::new(WoffHeaderRange::get_num_tables_range())),
-        reserved: 0,
-        total_sfnt_size: read_u32_be(buf, Box::new(WoffHeaderRange::get_total_sfnt_size_range())),
-        major_version: read_u16_be(buf, Box::new(WoffHeaderRange::get_major_version_range())),
-        minor_version: read_u16_be(buf, Box::new(WoffHeaderRange::get_minor_version_range())),
-        meta_offset: read_u32_be(buf, Box::new(WoffHeaderRange::get_meta_offset_range())),
-        meta_length: read_u32_be(buf, Box::new(WoffHeaderRange::get_meta_length_range())),
-        meta_orig_length: read_u32_be(buf, Box::new(WoffHeaderRange::get_meta_orgig_length_range())),
-        priv_offset: read_u32_be(buf, Box::new(WoffHeaderRange::get_priv_offset_range())),
-        priv_length: read_u32_be(buf, Box::new(WoffHeaderRange::get_priv_length_range())),
+        signature: read_u32_be(&mut buffer),
+        flavor: read_u32_be(&mut buffer),
+        length: read_u32_be(&mut buffer),
+        num_tables: read_u16_be(&mut buffer),
+        reserved: read_u16_be(&mut buffer),
+        total_sfnt_size: read_u32_be(&mut buffer),
+        major_version: read_u16_be(&mut buffer),
+        minor_version: read_u16_be(&mut buffer),
+        meta_offset: read_u32_be(&mut buffer),
+        meta_length: read_u32_be(&mut buffer),
+        meta_orig_length: read_u32_be(&mut buffer),
+        priv_offset: read_u32_be(&mut buffer),
+        priv_length: read_u32_be(&mut buffer),
     }
 }
 
 /// function for creating WOFF table directory entry structure
 fn create_woff_table_dir_entry(buf: &mut Vec<u8>, next_table_offset: usize) -> WoffTableDirectoryEntry {
+    let mut buffer = ByteBuffer::from_bytes(buf);
+    buffer.set_rpos(next_table_offset);
     WoffTableDirectoryEntry {
-        tag: read_u32_be(buf, Box::new(
-            WoffTableDirectoryEntryRange::construct_tag_range(next_table_offset, 4)
-        )),
-        offset: read_u32_be(buf, Box::new(
-            WoffTableDirectoryEntryRange::construct_offset_range(next_table_offset, 4)
-        )),
-        comp_length: read_u32_be(buf, Box::new(
-            WoffTableDirectoryEntryRange::construct_comp_length(next_table_offset, 4)
-        )),
-        orig_length: read_u32_be(buf, Box::new(
-            WoffTableDirectoryEntryRange::construct_orig_length(next_table_offset, 4)
-        )),
-        orig_checksum: read_u32_be(buf, Box::new(
-            WoffTableDirectoryEntryRange::construct_orig_checksum(next_table_offset, 4)
-        )),
+        tag: read_u32_be(&mut buffer),
+        offset: read_u32_be(&mut buffer),
+        comp_length: read_u32_be(&mut buffer),
+        orig_length: read_u32_be(&mut buffer),
+        orig_checksum: read_u32_be(&mut buffer),
     }
 }
 
