@@ -97,7 +97,7 @@ pub fn create_ttf_file(data_slice: &[u8], path_to_out_file: &str) -> crate::File
 /// This one reads unsigned 32-bits value in big endian order
 /// If error occurs - panic with message
 pub fn read_u32_be(buf: &mut ByteBuffer) -> u32 {
-    let part = buf.read_bytes(4);
+    let part = buf.read_bytes(std::mem::size_of::<u32>());
     let mut rdr = Cursor::new(part);
     rdr.read_u32::<BigEndian>().expect("Error: couldn't read u32 value from buffer")
 }
@@ -105,7 +105,7 @@ pub fn read_u32_be(buf: &mut ByteBuffer) -> u32 {
 /// This one reads unsigned 16-bits value in big endian order
 /// If error occurs - panic with message
 pub fn read_u16_be(buf: &mut ByteBuffer) -> u16 {
-    let part = buf.read_bytes(2);
+    let part = buf.read_bytes(std::mem::size_of::<u16>());
     let mut rdr = Cursor::new(part);
     rdr.read_u16::<BigEndian>().expect("Error: couldn't read u16 value from buffer")
 }
