@@ -1,7 +1,7 @@
 extern crate byteorder;
 extern crate flate2;
 
-mod utils;
+pub mod utils;
 mod structures;
 
 use crate::structures::*;
@@ -55,7 +55,7 @@ mod tests {
 }
 
 /// Result trait
-trait Result {
+pub trait Result {
     fn create_error_result(err: Error) -> *mut Self;
 }
 
@@ -302,7 +302,7 @@ fn sanity_check(buf: &mut Vec<u8>) -> Error {
 }
 
 /// Main function to decode and construct SFNT file or data form WOFF file
-fn decode_internal<T: Result>(mut buf: &mut Vec<u8>, out_file_path: Option<&str>) -> *mut T {
+pub fn decode_internal<T: Result>(mut buf: &mut Vec<u8>, out_file_path: Option<&str>) -> *mut T {
     let mut error = sanity_check(buf);
 
     // return result with error from sanity check if error occurred
@@ -420,7 +420,7 @@ fn decode_internal<T: Result>(mut buf: &mut Vec<u8>, out_file_path: Option<&str>
     }
 
     if let Some(path) = out_file_path {
-        let decoded_result = create_sfnt(
+        let decoded_result = create_sfnt_file(
             sfnt_offset_table,
             sfnt_table_records_vec,
             sfnt_table_data_vec,
@@ -508,7 +508,7 @@ fn assemble_sfnt_binary(
 }
 
 /// Creates SFNT binary from parts of data and call function for creating .ttf file
-fn create_sfnt(
+fn create_sfnt_file(
     sfnt_header: SfntOffsetTable,
     table_records: Vec<SfntTableRecord>,
     data_tables: Vec<Vec<u8>>,

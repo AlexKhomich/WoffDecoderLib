@@ -1,8 +1,12 @@
 [package]
-name = "woff_decoder"
+name = "woff-decoder"
 version = "0.2.0"
 authors = ["Alex Khomich <alexkh90@gmail.com>"]
 edition = "2018"
+readme = "README.md"
+keywords = ["woff"]
+license = "Apache-2.0"
+repository = "https://github.com/AlexKhomich/WoffDecoderLib.git"
 
 [dependencies]
 byteorder = "1.2.7"
