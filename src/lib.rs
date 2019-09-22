@@ -65,7 +65,7 @@ pub struct DecodedResult {
     pub error: Error,
 }
 
-pub struct DecodedData {
+struct DecodedData {
     pub sfnt_header: SfntOffsetTable,
     pub table_records: Vec<SfntTableRecord>,
     pub data_tables: Vec<Vec<u8>>,
