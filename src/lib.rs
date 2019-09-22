@@ -22,14 +22,11 @@ mod tests {
         let str_path = "test_fonts/noto-sans-tc.woff";
         let mut buf: Vec<u8> = vec![];
         read_file(str_path, &mut buf);
-        let result = decode_internal::<DecodedResult>(&mut buf, None);
-        unsafe {
-            debug_assert!(
-                (*result).error == Error::None
-                    && (*result).decoded_data_len > 0
-                    && !(*result).decoded_data.is_null()
-            )
-        };
+        let result = DecodedResult::create_ok_result(decode_internal(&mut buf));
+        match result {
+            Ok(data) => { debug_assert!(data.len() > 0) }
+            Err(err) => { debug_assert!(err != Error::None) }
+        }
     }
 
     #[test]
@@ -54,11 +51,6 @@ mod tests {
     }
 }
 
-/// Result trait
-pub trait Result {
-    fn create_error_result(err: Error) -> *mut Self;
-}
-
 /// Result structure with decoded SFNT data
 ///
 /// #Fields
@@ -73,15 +65,52 @@ pub struct DecodedResult {
     pub error: Error,
 }
 
+pub struct DecodedData {
+    pub sfnt_header: SfntOffsetTable,
+    pub table_records: Vec<SfntTableRecord>,
+    pub data_tables: Vec<Vec<u8>>,
+    pub error: Error
+}
+
 /// Creates `DecodedResult` structure with null decoded data pointer,
 /// zero decoded data length and error type fields
-impl Result for DecodedResult {
-    fn create_error_result(err: Error) -> *mut Self {
+impl DecodedResult {
+
+    fn create_error_result_ptr(err: Error) -> *mut Self {
         Box::into_raw(Box::new(Self {
             decoded_data: std::ptr::null_mut(),
             decoded_data_len: 0,
             error: err,
         }))
+    }
+
+    fn create_ok_result(result: Result<DecodedData, Error>) -> Result<Vec<u8>, Error> {
+        match result {
+            Ok(data) => {
+                Ok(assemble_sfnt_data_vec(
+                    data.sfnt_header,
+                    data.table_records,
+                    data.data_tables
+                ))
+            }
+            Err(err) => { Err(err) }
+        }
+    }
+
+    fn create_ok_result_ptr(result: Result<DecodedData, Error>) -> *mut Self {
+        match result {
+            Ok(data) => {
+                return assemble_sfnt_binary(
+                    data.sfnt_header,
+                    data.table_records,
+                    data.data_tables,
+                    data.error
+                )
+            }
+            Err(err) => {
+                return DecodedResult::create_error_result_ptr(err)
+            }
+        }
     }
 }
 
@@ -99,19 +128,49 @@ pub struct FileRWResult {
 
 /// Creates `FileRWResult` structure with null decoded data pointer,
 /// zero decoded data length and error type fields
-impl Result for FileRWResult {
-    fn create_error_result(err: Error) -> *mut Self {
+impl FileRWResult {
+    fn create_error_result_ptr(err: Error) -> *mut Self {
         Box::into_raw(Box::new(Self {
             data_len: 0,
             error: err,
         }))
+    }
+
+    fn create_ok_result(result: Result<DecodedData, Error>, out_path: &str) -> Error {
+        match result {
+            Ok(data) => {
+                create_sfnt_file_from_vec(
+                    data.sfnt_header,
+                    data.table_records,
+                    data.data_tables,
+                    out_path
+                )
+            }
+            Err(err) => { err }
+        }
+    }
+
+    fn create_ok_result_ptr(result: Result<DecodedData, Error>, out_path: &str) -> *mut Self {
+        match result {
+            Ok(data) => {
+                return create_sfnt_file(
+                    data.sfnt_header,
+                    data.table_records,
+                    data.data_tables,
+                    out_path
+                )
+            }
+            Err(err) => {
+                return FileRWResult::create_error_result_ptr(err)
+            }
+        }
     }
 }
 
 /// Enum with types of error
 /// If `Error` with type `None` that means no errors occurred
 #[repr(C)]
-#[derive(PartialEq)]
+#[derive(PartialEq, Debug)]
 pub enum Error {
     None,
     DecodeError,
@@ -138,14 +197,14 @@ pub unsafe extern fn decode_from_file_wrapped(path: *const c_char) -> *mut Decod
     let c_srt = CStr::from_ptr(path);
     let str_path = match c_srt.to_str() {
         Ok(string) => string,
-        Err(_) => return DecodedResult::create_error_result(Error::InputPathError)
+        Err(_) => return DecodedResult::create_error_result_ptr(Error::InputPathError)
     };
     let mut buf: Vec<u8> = vec![];
     let read_result = read_file(str_path, &mut buf);
     if read_result.error != Error::None {
-        return DecodedResult::create_error_result(read_result.error);
+        return DecodedResult::create_error_result_ptr(read_result.error);
     }
-    decode_internal::<DecodedResult>(&mut buf, None)
+    DecodedResult::create_ok_result_ptr(decode_internal(&mut buf))
 }
 
 /// Decode WOFF data to SFNT data wrapped for using with C wrapper
@@ -160,9 +219,9 @@ pub unsafe extern fn decode_from_data_wrapped(
             woff_data_size,
             woff_data_size,
         );
-        decode_internal::<DecodedResult>(&mut data, None)
+        DecodedResult::create_ok_result_ptr(decode_internal(&mut data))
     } else {
-        DecodedResult::create_error_result(Error::DecodeError)
+        DecodedResult::create_error_result_ptr(Error::DecodeError)
     }
 }
 
@@ -176,20 +235,20 @@ pub unsafe extern fn decode_file_to_file_wrapped(
     let c_srt = CStr::from_ptr(in_path);
     let in_path = match c_srt.to_str() {
         Ok(string) => string,
-        Err(_) => return FileRWResult::create_error_result(Error::InputPathError)
+        Err(_) => return FileRWResult::create_error_result_ptr(Error::InputPathError)
     };
 
     let c_srt = CStr::from_ptr(out_path);
     let out_path = match c_srt.to_str() {
         Ok(string) => string,
-        Err(_) => return FileRWResult::create_error_result(Error::OutputPathError)
+        Err(_) => return FileRWResult::create_error_result_ptr(Error::OutputPathError)
     };
     let mut buf: Vec<u8> = vec![];
     let read_result = read_file(in_path, &mut buf);
     if read_result.error != Error::None {
-        return FileRWResult::create_error_result(read_result.error);
+        return FileRWResult::create_error_result_ptr(read_result.error);
     }
-    decode_internal::<FileRWResult>(&mut buf, Some(out_path))
+    FileRWResult::create_ok_result_ptr(decode_internal(&mut buf), out_path)
 }
 
 /// Decode WOFF data to SFNT file wrapped for using with C wrapper
@@ -202,7 +261,7 @@ pub unsafe extern fn decode_data_to_file_wrapped(
     let c_srt = CStr::from_ptr(path);
     let str_path = match c_srt.to_str() {
         Ok(string) => string,
-        Err(_) => return FileRWResult::create_error_result(Error::InputPathError)
+        Err(_) => return FileRWResult::create_error_result_ptr(Error::InputPathError)
     };
 
     if !source_buf.is_null() && woff_data_size > 0 {
@@ -211,9 +270,9 @@ pub unsafe extern fn decode_data_to_file_wrapped(
             woff_data_size,
             woff_data_size,
         );
-        decode_internal::<FileRWResult>(&mut data, Some(str_path))
+        FileRWResult::create_ok_result_ptr(decode_internal(&mut data), str_path)
     } else {
-        FileRWResult::create_error_result(Error::DecodeError)
+        FileRWResult::create_error_result_ptr(Error::DecodeError)
     }
 }
 
@@ -237,45 +296,54 @@ pub unsafe extern fn destroy_file_rw_result(data: *mut FileRWResult) {
 }
 
 /// Decode .woff file data to SFNT bytes. Using with C wrapper
-pub fn decode_from_file(path: &str) -> *mut DecodedResult {
+pub fn decode_from_file(path: &str) -> Result<Vec<u8>, Error> {
     let mut buf: Vec<u8> = vec![];
     let read_result = read_file(path, &mut buf);
     if read_result.error != Error::None {
-        return DecodedResult::create_error_result(read_result.error);
+        return Err(read_result.error);
+    };
+    match DecodedResult::create_ok_result(decode_internal(&mut buf)) {
+        Ok(result) => { Ok(result) }
+        Err(err) => { Err(err) }
     }
-    decode_internal::<DecodedResult>(&mut buf, None)
 }
 
 /// Decode .woff file data to SFNT file. Using with C wrapper
-pub fn decode_from_file_to_file(in_path: &str, out_path: &str) -> *mut FileRWResult {
+pub fn decode_from_file_to_file(in_path: &str, out_path: &str) -> Error {
     let mut buf: Vec<u8> = vec![];
     let read_result = read_file(in_path, &mut buf);
     if read_result.error != Error::None {
-        return FileRWResult::create_error_result(read_result.error);
+        return read_result.error;
     }
-    decode_internal::<FileRWResult>(&mut buf, Some(out_path))
+   FileRWResult::create_ok_result(decode_internal(&mut buf), out_path)
 }
 
 /// Decode WOFF data from vector to SFNT data
-pub fn decode_from_vec(buf: &mut Vec<u8>) -> *mut DecodedResult {
-    decode_internal::<DecodedResult>(buf, None)
+pub fn decode_from_vec(buf: &mut Vec<u8>) -> Result<Vec<u8>, Error> {
+    match DecodedResult::create_ok_result(decode_internal(buf)) {
+        Ok(result) => { Ok(result) }
+        Err(err) => { Err(err) }
+    }
 }
 
 /// Decode WOFF data from vector to SFNT file
-pub fn decode_from_vec_to_file(buf: &mut Vec<u8>, out_path: &str) -> *mut FileRWResult {
-    decode_internal::<FileRWResult>(buf, Some(out_path))
+pub fn decode_from_vec_to_file(buf: &mut Vec<u8>, out_path: &str) -> Error {
+    FileRWResult::create_ok_result(decode_internal(buf), out_path)
 }
 
 /// Decode WOFF data from slice to SFNT data
-pub fn decode_from_slice(buf: &[u8]) -> *mut DecodedResult {
+pub fn decode_from_slice(buf: &[u8]) -> Result<Vec<u8>, Error> {
     let mut data: Vec<u8> = Vec::from(buf);
-    decode_internal::<DecodedResult>(&mut data, None)
+    match DecodedResult::create_ok_result(decode_internal(&mut data)) {
+        Ok(result) => { Ok(result) }
+        Err(err) => { Err(err) }
+    }
 }
 
 /// Decode WOFF data from slice to SFNT file
-pub fn decode_from_slice_to_file(buf: &[u8], out_path: &str) -> *mut FileRWResult {
+pub fn decode_from_slice_to_file(buf: &[u8], out_path: &str) -> Error {
     let mut data: Vec<u8> = Vec::from(buf);
-    decode_internal::<FileRWResult>(&mut data, Some(out_path))
+    FileRWResult::create_ok_result(decode_internal(&mut data), out_path)
 }
 
 /// Sanity check for WOFF file
@@ -302,12 +370,12 @@ fn sanity_check(buf: &mut Vec<u8>) -> Error {
 }
 
 /// Main function to decode and construct SFNT file or data form WOFF file
-pub fn decode_internal<T: Result>(mut buf: &mut Vec<u8>, out_file_path: Option<&str>) -> *mut T {
+fn decode_internal(mut buf: &mut Vec<u8>) -> std::result::Result<DecodedData, Error> {
     let mut error = sanity_check(buf);
 
     // return result with error from sanity check if error occurred
     if error != Error::None {
-        return T::create_error_result(error);
+        return Err(error);
     }
 
     // We need to know sizes of several SFNT and WOFF structures.
@@ -346,7 +414,7 @@ pub fn decode_internal<T: Result>(mut buf: &mut Vec<u8>, out_file_path: Option<&
         if (woff_table_dir_entry.orig_length < woff_table_dir_entry.comp_length)
             || (woff_table_dir_entry.offset as usize > buf.len() - woff_table_dir_entry.comp_length as usize) {
             error = Error::InvalidWoffStructure;
-            return T::create_error_result(error);
+            return Err(error);
         }
         woff_table_dir_entry_container.push(woff_table_dir_entry);
         sfnt_table_offset += sfnt_table_record_size
@@ -375,11 +443,11 @@ pub fn decode_internal<T: Result>(mut buf: &mut Vec<u8>, out_file_path: Option<&
                 Ok(stat) => {
                     if stat == flate2::Status::Ok {
                         error = Error::OutBufferFull;
-                        return T::create_error_result(error);
+                        return Err(error);
                     };
                     if stat == flate2::Status::BufError {
                         error = Error::BuffError;
-                        return T::create_error_result(error);
+                        return Err(error);
                     };
                     if stat == flate2::Status::StreamEnd {
                         error = Error::None
@@ -387,7 +455,7 @@ pub fn decode_internal<T: Result>(mut buf: &mut Vec<u8>, out_file_path: Option<&
                 }
                 Err(_) => {
                     error = Error::DecompressError;
-                    return T::create_error_result(error);
+                    return Err(error);
                 }
             };
         } else {
@@ -419,23 +487,12 @@ pub fn decode_internal<T: Result>(mut buf: &mut Vec<u8>, out_file_path: Option<&
         sfnt_table_data_vec.push(sfnt_table_data);
     }
 
-    if let Some(path) = out_file_path {
-        let decoded_result = create_sfnt_file(
-            sfnt_offset_table,
-            sfnt_table_records_vec,
-            sfnt_table_data_vec,
-            path,
-        );
-        return decoded_result as *mut T;
-    } else {
-        let decoded_result = assemble_sfnt_binary(
-            sfnt_offset_table,
-            sfnt_table_records_vec,
-            sfnt_table_data_vec,
-            error,
-        );
-        return decoded_result as *mut T;
-    }
+    Ok(DecodedData {
+        sfnt_header: sfnt_offset_table,
+        table_records: sfnt_table_records_vec,
+        data_tables: sfnt_table_data_vec,
+        error
+    })
 }
 
 /// Function for creating WOFF header from raw data
@@ -472,6 +529,8 @@ fn create_woff_table_dir_entry(buf: &mut Vec<u8>, next_table_offset: usize) -> W
 }
 
 /// Creates SFNT binary from parts of data and returns raw pointer on this data
+/// Important note: vector with decoded data doesn't destruct after finishing function!
+/// After calling wrapped functions you should call destroy function and set result data as a parameter
 fn assemble_sfnt_binary(
     sfnt_header: SfntOffsetTable,
     table_records: Vec<SfntTableRecord>,
@@ -507,6 +566,32 @@ fn assemble_sfnt_binary(
     Box::into_raw(Box::new(result_buffer))
 }
 
+/// Creates SFNT binary from parts of data and returns Vec<u8> with data
+fn assemble_sfnt_data_vec(
+    sfnt_header: SfntOffsetTable,
+    table_records: Vec<SfntTableRecord>,
+    data_tables: Vec<Vec<u8>>
+) -> Vec<u8> {
+    let mut sfnt_header_data = sfnt_header.transform_to_u8_vec();
+    let mut sfnt_data_vec: Vec<u8> = Vec::with_capacity(
+        sfnt_header_data.len()
+            + table_records.len()
+            + data_tables.len()
+    );
+
+    sfnt_data_vec.append(&mut sfnt_header_data);
+
+    for record in table_records {
+        let mut record_data = record.transform_to_u8_vec();
+        sfnt_data_vec.append(&mut record_data);
+    }
+
+    for mut table in data_tables {
+        sfnt_data_vec.append(&mut table)
+    }
+    return sfnt_data_vec
+}
+
 /// Creates SFNT binary from parts of data and call function for creating .ttf file
 fn create_sfnt_file(
     sfnt_header: SfntOffsetTable,
@@ -533,4 +618,32 @@ fn create_sfnt_file(
     }
 
     Box::into_raw(Box::new(create_ttf_file(&sfnt_data_vec.as_slice(), path_to_out_file)))
+}
+
+/// Creates SFNT binary from parts of data and call function for creating .ttf file
+fn create_sfnt_file_from_vec(
+    sfnt_header: SfntOffsetTable,
+    table_records: Vec<SfntTableRecord>,
+    data_tables: Vec<Vec<u8>>,
+    path_to_out_file: &str,
+) -> Error {
+    let mut sfnt_header_data = sfnt_header.transform_to_u8_vec();
+    let mut sfnt_data_vec: Vec<u8> = Vec::with_capacity(
+        sfnt_header_data.len()
+            + table_records.len()
+            + data_tables.len()
+    );
+
+    sfnt_data_vec.append(&mut sfnt_header_data);
+
+    for record in table_records {
+        let mut record_data = record.transform_to_u8_vec();
+        sfnt_data_vec.append(&mut record_data);
+    }
+
+    for mut table in data_tables {
+        sfnt_data_vec.append(&mut table)
+    }
+
+    create_ttf_file(&sfnt_data_vec.as_slice(), path_to_out_file).error
 }
