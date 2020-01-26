@@ -98,9 +98,9 @@ impl DecodedResult {
     }
 
     fn create_ok_result_ptr(result: Result<DecodedData, Error>) -> *mut Self {
-        match result {
+        return match result {
             Ok(data) => {
-                return assemble_sfnt_binary(
+                assemble_sfnt_binary(
                     data.sfnt_header,
                     data.table_records,
                     data.data_tables,
@@ -108,7 +108,7 @@ impl DecodedResult {
                 )
             }
             Err(err) => {
-                return DecodedResult::create_error_result_ptr(err)
+                DecodedResult::create_error_result_ptr(err)
             }
         }
     }
@@ -151,9 +151,9 @@ impl FileRWResult {
     }
 
     fn create_ok_result_ptr(result: Result<DecodedData, Error>, out_path: &str) -> *mut Self {
-        match result {
+        return match result {
             Ok(data) => {
-                return create_sfnt_file(
+                create_sfnt_file(
                     data.sfnt_header,
                     data.table_records,
                     data.data_tables,
@@ -161,7 +161,7 @@ impl FileRWResult {
                 )
             }
             Err(err) => {
-                return FileRWResult::create_error_result_ptr(err)
+                FileRWResult::create_error_result_ptr(err)
             }
         }
     }
