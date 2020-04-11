@@ -37,7 +37,6 @@ use std::io::Cursor;
 use byteorder::{BigEndian, ReadBytesExt};
 use std::fs::File;
 use std::io::{BufReader, Read, Write};
-use std::error::Error;
 use bytebuffer::ByteBuffer;
 
 
@@ -52,13 +51,13 @@ pub fn read_file(path: &str, buf: &mut Vec<u8>) -> crate::FileRWResult {
             match reader.read_to_end(buf) {
                 Ok(result_size) => { file_size = result_size },
                 Err(err) => {
-                    println!("Couldn't read the file: {}, cause: {}", path, err.description());
+                    println!("Couldn't read the file: {}, cause: {}", path, err.to_string());
                     error = crate::Error::ReadFromFileError;
                 },
             }
         },
         Err(err) => {
-            println!("Couldn't open the file: {}, cause: {}", path, err.description());
+            println!("Couldn't open the file: {}, cause: {}", path, err.to_string());
             error = crate::Error::OpenFileError
         },
     }
@@ -78,13 +77,13 @@ pub fn create_ttf_file(data_slice: &[u8], path_to_out_file: &str) -> crate::File
             match file.write_all(data_slice) {
                 Ok(_) => {},
                 Err(err) => {
-                    println!("Couldn't write to file: {}, cause: {}", path_to_out_file, err.description());
+                    println!("Couldn't write to file: {}, cause: {}", path_to_out_file, err.to_string());
                     error = crate::Error::WriteToFileError;
                 },
             };
         },
         Err(err) => {
-            println!("Couldn't create the file: {}, cause: {}", path_to_out_file, err.description());
+            println!("Couldn't create the file: {}, cause: {}", path_to_out_file, err.to_string());
             error = crate::Error::CreateFileError;
         },
     };
