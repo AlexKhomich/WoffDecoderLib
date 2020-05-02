@@ -295,7 +295,7 @@ pub unsafe extern fn destroy_file_rw_result(data: *mut FileRWResult) {
     }
 }
 
-/// Decode .woff file data to SFNT bytes. Using with C wrapper
+/// Decode .woff file data to SFNT bytes.
 pub fn decode_from_file(path: &str) -> Result<Vec<u8>, Error> {
     let mut buf: Vec<u8> = vec![];
     let read_result = read_file(path, &mut buf);
@@ -308,7 +308,7 @@ pub fn decode_from_file(path: &str) -> Result<Vec<u8>, Error> {
     }
 }
 
-/// Decode .woff file data to SFNT file. Using with C wrapper
+/// Decode .woff file data to SFNT file
 pub fn decode_from_file_to_file(in_path: &str, out_path: &str) -> Error {
     let mut buf: Vec<u8> = vec![];
     let read_result = read_file(in_path, &mut buf);

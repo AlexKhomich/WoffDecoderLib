@@ -9,7 +9,7 @@
 
 /// Enum with types of error
 /// If `Error` with type `None` that means no errors occurred
-typedef enum {
+typedef enum Error {
     None,
     DecodeError,
     DataSourceIsEmpty,
@@ -35,7 +35,7 @@ typedef enum {
 /// `decoded_data` - decoded SFNT data
 /// `decoded_data_len` - length of decoded SFNT data
 /// `error` - type of error. None - returned result has no errors.
-typedef struct {
+typedef struct DecodedResult {
     uint8_t* decoded_data;
     size_t decoded_data_len;
     Error error;
@@ -47,7 +47,7 @@ typedef struct {
 ///
 /// `data_len` - length of decoded SFNT data that was written to file.
 /// `error` - type of error. None - returned result has no errors and file was written successfully.
-typedef struct {
+typedef struct FileRWResult {
     size_t data_len;
     Error error;
 } FileRWResult;

@@ -8,4 +8,8 @@ linker = "<path_to_ndk_bundle>/toolchains/llvm/prebuilt/linux-x86_64/bin/arm-lin
 
 [target.i686-linux-android]
 ar = "<path_to_ndk_bundle>/toolchains/llvm/prebuilt/linux-x86_64/bin/i686-linux-android-ar"
-linker = "<path_to_ndk_bundle>/toolchains/llvm/prebuilt/linux-x86_64/bin/i686-linux-android-clang"
+linker = "<path_to_ndk_bundle>/toolchains/llvm/prebuilt/linux-x86_64/bin/i686-linux-android29-clang"
+
+[target.x86_64-linux-android]
+ar = "<path_to_ndk_bundle>/toolchains/llvm/prebuilt/linux-x86_64/bin/x86_64-linux-android-ar"
+linker = "<path_to_ndk_bundle>/toolchains/llvm/prebuilt/linux-x86_64/bin/x86_64-linux-android29-clang"

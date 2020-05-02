@@ -130,16 +130,17 @@ pub fn calculate_range_shift(num_tables: u16, search_range: u16) -> u16 {
 
 /// Calculates search range for every SFNT data table.
 /// This one has to be (maximum power of 2 <= numTables)*16.
-///  For example:
-///  result = Math.pow(2, Math.floor(Math.log(num_tables) / Math.log(2)));
-///  result * 16;
+///     For example:
+///     result = Math.pow(2, Math.floor(Math.log(num_tables) / Math.log(2)));
+///     result * 16;
+///     For range [1; 2) returned value will be 16; [2; 4) -> 32; [4; 8) -> 64; [8; 16) -> 128 etc.
 #[inline(always)]
 pub fn calculate_search_range(num_tables: u16) -> u16 {
     let mut sr = num_tables;
-    sr = sr | (sr >> 1);
-    sr = sr | (sr >> 2);
-    sr = sr | (sr >> 4);
-    sr = sr | (sr >> 8);
+    sr |= sr >> 1;
+    sr |= sr >> 2;
+    sr |= sr >> 4;
+    sr |= sr >> 8;
     sr &= !(sr >> 1);
     sr *= 16;
     sr
@@ -165,7 +166,7 @@ pub unsafe fn any_as_u8_slice<T: Sized>(p: &T) -> &[u8] {
 }
 
 /// Transforms unsigned 32-bits number to array of bytes.
-/// Result vector contains values in big endian order!
+/// Result array contains values in big endian order!
 #[inline(always)]
 pub fn u32_to_u8_array(x: u32) -> [u8; 4] {
     let mut result: [u8; 4] = [0; 4];
@@ -177,7 +178,7 @@ pub fn u32_to_u8_array(x: u32) -> [u8; 4] {
 }
 
 /// Transforms unsigned 16-bits number to array of bytes.
-/// Result vector contains values in big endian order!
+/// Result array contains values in big endian order!
 #[inline(always)]
 pub fn u16_to_u8_array(x: u16) -> [u8; 2] {
     let mut result: [u8; 2] = [0; 2];
