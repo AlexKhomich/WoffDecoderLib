@@ -44,7 +44,8 @@ fn decode_to_file() {
 
 fn decode_to_buffer() {
     let mut buf: Vec<u8> = vec![];
-    let rw_result: FileRWResult = read_file("test_fonts/noto-sans-tc.woff" /*change to your path*/, &mut buf);
+    let path = "test_fonts/noto-sans-tc.woff"; /*change to your path*/
+    let rw_result: FileRWResult = read_file(path, &mut buf);
     if rw_result.error == Error::None {
         let result = decode_from_vec(&mut buf);
         match result {
