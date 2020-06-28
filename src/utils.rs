@@ -69,7 +69,7 @@ pub fn read_file(path: &str, buf: &mut Vec<u8>) -> crate::FileRWResult {
 
 /// Creates .ttf file and writes all decoded data to this file
 /// If error occurs - prints path to file and err description to stdout
-pub fn create_ttf_file(data_slice: &[u8], path_to_out_file: &str) -> crate::FileRWResult {
+pub(crate) fn create_ttf_file(data_slice: &[u8], path_to_out_file: &str) -> crate::FileRWResult {
     let mut error = crate::Error::None;
     match File::create(path_to_out_file) {
         Ok(mut file) => {
@@ -95,7 +95,7 @@ pub fn create_ttf_file(data_slice: &[u8], path_to_out_file: &str) -> crate::File
 
 /// This one reads unsigned 32-bits value in big endian order
 /// If error occurs - panic with message
-pub fn read_u32_be(buf: &mut ByteBuffer) -> u32 {
+pub(crate) fn read_u32_be(buf: &mut ByteBuffer) -> u32 {
     let part = buf.read_bytes(std::mem::size_of::<u32>());
     let mut rdr = Cursor::new(part);
     rdr.read_u32::<BigEndian>().expect("Error: couldn't read u32 value from buffer")
@@ -103,7 +103,7 @@ pub fn read_u32_be(buf: &mut ByteBuffer) -> u32 {
 
 /// This one reads unsigned 16-bits value in big endian order
 /// If error occurs - panic with message
-pub fn read_u16_be(buf: &mut ByteBuffer) -> u16 {
+pub(crate) fn read_u16_be(buf: &mut ByteBuffer) -> u16 {
     let part = buf.read_bytes(std::mem::size_of::<u16>());
     let mut rdr = Cursor::new(part);
     rdr.read_u16::<BigEndian>().expect("Error: couldn't read u16 value from buffer")
@@ -113,7 +113,7 @@ pub fn read_u16_be(buf: &mut ByteBuffer) -> u16 {
 /// It tells how many iterations of the search loop are needed.
 /// (i.e. how many times to cut the range in half)
 #[inline(always)]
-pub fn calculate_entry_selector(mut number: u16) -> u16 {
+pub(crate) fn calculate_entry_selector(mut number: u16) -> u16 {
     let mut res: u16 = 0;
     while number > 16 {
         number >>= 1;
@@ -124,7 +124,7 @@ pub fn calculate_entry_selector(mut number: u16) -> u16 {
 
 /// Calculates rangeShift (numTables*16-searchRange)
 #[inline(always)]
-pub fn calculate_range_shift(num_tables: u16, search_range: u16) -> u16 {
+pub(crate) fn calculate_range_shift(num_tables: u16, search_range: u16) -> u16 {
     num_tables * 16 - search_range
 }
 
@@ -135,7 +135,7 @@ pub fn calculate_range_shift(num_tables: u16, search_range: u16) -> u16 {
 ///     result * 16;
 ///     For range [1; 2) returned value will be 16; [2; 4) -> 32; [4; 8) -> 64; [8; 16) -> 128 etc.
 #[inline(always)]
-pub fn calculate_search_range(num_tables: u16) -> u16 {
+pub(crate) fn calculate_search_range(num_tables: u16) -> u16 {
     let mut sr = num_tables;
     sr |= sr >> 1;
     sr |= sr >> 2;
@@ -148,7 +148,7 @@ pub fn calculate_search_range(num_tables: u16) -> u16 {
 
 /// Calculates padded length for structure that has to be aligned by 4-bytes.
 #[inline(always)]
-pub fn calculate_padded_len(orig_len: u32, sfnt_table_data_len: usize) -> u32 {
+pub(crate) fn calculate_padded_len(orig_len: u32, sfnt_table_data_len: usize) -> u32 {
     let aligned_len = (orig_len + 3) & !3;
     aligned_len - sfnt_table_data_len as u32
 }
@@ -158,7 +158,7 @@ pub fn calculate_padded_len(orig_len: u32, sfnt_table_data_len: usize) -> u32 {
 /// DO NOT USE it with Big endian order!!!
 #[allow(dead_code)]
 #[inline(always)]
-pub unsafe fn any_as_u8_slice<T: Sized>(p: &T) -> &[u8] {
+pub(crate) unsafe fn any_as_u8_slice<T: Sized>(p: &T) -> &[u8] {
     std::slice::from_raw_parts(
         (p as *const T) as *const u8,
         std::mem::size_of::<T>(),
@@ -168,7 +168,7 @@ pub unsafe fn any_as_u8_slice<T: Sized>(p: &T) -> &[u8] {
 /// Transforms unsigned 32-bits number to array of bytes.
 /// Result array contains values in big endian order!
 #[inline(always)]
-pub fn u32_to_u8_array(x: u32) -> [u8; 4] {
+pub(crate) fn u32_to_u8_array(x: u32) -> [u8; 4] {
     let mut result: [u8; 4] = [0; 4];
     result[0] = ((x >> 24) & 0xff) as u8;
     result[1] = ((x >> 16) & 0xff) as u8;
@@ -180,7 +180,7 @@ pub fn u32_to_u8_array(x: u32) -> [u8; 4] {
 /// Transforms unsigned 16-bits number to array of bytes.
 /// Result array contains values in big endian order!
 #[inline(always)]
-pub fn u16_to_u8_array(x: u16) -> [u8; 2] {
+pub(crate) fn u16_to_u8_array(x: u16) -> [u8; 2] {
     let mut result: [u8; 2] = [0; 2];
     result[0] = ((x >> 8) & 0xff) as u8;
     result[1] = (x & 0xff) as u8;
@@ -191,7 +191,7 @@ pub fn u16_to_u8_array(x: u16) -> [u8; 2] {
 /// Result vector contains values in big endian order!
 #[allow(dead_code)]
 #[inline(always)]
-pub fn transform_u32_to_u8_vec(x: u32) -> Vec<u8> {
+pub(crate) fn transform_u32_to_u8_vec(x: u32) -> Vec<u8> {
     let result: [u8; 4] = x.to_be_bytes();
     result.to_vec()
 }
@@ -200,7 +200,7 @@ pub fn transform_u32_to_u8_vec(x: u32) -> Vec<u8> {
 /// Result vector contains values in big endian order!
 #[allow(dead_code)]
 #[inline(always)]
-pub fn transform_u16_to_u8_vec(x: u16) -> Vec<u8> {
+pub(crate) fn transform_u16_to_u8_vec(x: u16) -> Vec<u8> {
     let mut result_vec: Vec<u8> = Vec::with_capacity(2);
     result_vec.push(((x >> 8) & 0xff) as u8);
     result_vec.push((x & 0xff) as u8);
