@@ -25,7 +25,7 @@ mod tests {
         let result = DecodedResult::create_result(decode_internal(&mut buf));
         match result {
             Ok(data) => { debug_assert!(data.len() > 0) }
-            Err(err) => { debug_assert!(err != Error::None) }
+            Err(err) => { debug_assert!(err == Error::None) }
         }
     }
 
