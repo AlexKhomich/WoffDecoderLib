@@ -5,7 +5,6 @@ mod utils;
 use woffdecoder::{Error, FileRWResult, decode_from_vec_to_file, decode_from_vec};
 use crate::utils::read_file;
 
-#[allow(dead_code)]
 fn handle_error(err: Error) {
     match err {
         Error::None => { println!("No errors") }
@@ -35,9 +34,9 @@ fn decode_to_file() {
     if rw_result.error == Error::None {
         let result = decode_from_vec_to_file(&mut buf, out_path);
         if result != Error::None {
-            println!("{:?}", result)
+            handle_error(result);
         } else {
-            println!("The WOFF data was successfully decoded to TTF font data and written to file: {}", out_path)
+            println!("The WOFF data was successfully decoded to TTF font data and written to file: {}", out_path);
         }
     }
 }
@@ -50,10 +49,10 @@ fn decode_to_buffer() {
         let result = decode_from_vec(&mut buf);
         match result {
             Ok(_) => {
-                println!("The WOFF data was successfully decoded to TTF font data!")
+                println!("The WOFF data was successfully decoded to TTF font data!");
             }
             Err(err) => {
-                handle_error(err)
+                handle_error(err);
             }
         }
     }
