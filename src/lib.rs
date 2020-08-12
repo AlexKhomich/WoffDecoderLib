@@ -406,8 +406,8 @@ fn decode_internal(mut buf: &mut Vec<u8>) -> std::result::Result<DecodedData, Er
     let mut woff_table_dir_entry_container: Vec<WoffTableDirectoryEntry> = Vec::with_capacity(sfnt_num_tables as usize);
 
     // construct each SFNT table record
-    for i in 0..sfnt_num_tables as usize {
-        let next_table_offset = woff_header_size + (i * woff_table_directory_size);
+    for table_number in 0..sfnt_num_tables as usize {
+        let next_table_offset = woff_header_size + (table_number * woff_table_directory_size);
         let woff_table_dir_entry = create_woff_table_dir_entry(&mut buf, next_table_offset);
         // check if dir_entry parameters are correct
         // and if not return Result with error
@@ -422,7 +422,7 @@ fn decode_internal(mut buf: &mut Vec<u8>) -> std::result::Result<DecodedData, Er
 
     // sort all entries by tag
     woff_table_dir_entry_container.sort_by(
-        |a, b| a.tag.cmp(&b.tag)
+        |first_entry, second_entry| first_entry.tag.cmp(&second_entry.tag)
     );
 
     let mut sfnt_table_records_vec: Vec<SfntTableRecord> = Vec::with_capacity(sfnt_num_tables as usize);
