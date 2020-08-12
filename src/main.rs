@@ -48,8 +48,8 @@ fn decode_to_buffer() {
     if rw_result.error == Error::None {
         let result = decode_from_vec(&mut buf);
         match result {
-            Ok(_) => {
-                println!("The WOFF data was successfully decoded to TTF font data!");
+            Ok(result_vec) => {
+                println!("The WOFF data was successfully decoded to TTF font data with {} bytes size!", result_vec.len());
             }
             Err(err) => {
                 handle_error(err);
