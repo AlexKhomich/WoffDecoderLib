@@ -10,7 +10,7 @@ repository = "https://github.com/AlexKhomich/WoffDecoderLib.git"
 
 [dependencies]
 byteorder = "1.3.4"
-flate2 = "1.0.14"
+flate2 = "1.0.17"
 bytebuffer = "0.2.1"
 
 [profile.release]
