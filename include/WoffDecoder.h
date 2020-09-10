@@ -61,14 +61,14 @@ extern "C" {
 DecodedResult* decode_from_file_wrapped(const char* path);
 
 /// Decode WOFF data to SFNT data wrapped for using with C wrapper
-DecodedResult* decode_from_data_wrapped(const uint8_t* source_buf, const size_t woff_data_size);
+DecodedResult* decode_from_data_wrapped(const uint8_t* source_buf, size_t woff_data_size);
 
 /// Decode .woff file data to SFNT file wrapped for using with C wrapper
 /// And returns FileRWResult structure with decoded data
 FileRWResult* decode_file_to_file_wrapped(const char* in_path, const char* out_path);
 
 /// Decode WOFF data to SFNT file wrapped for using with C wrapper
-FileRWResult* decode_data_to_file_wrapped(const uint8_t* source_buf, const size_t woff_data_size, const char* out_path);
+FileRWResult* decode_data_to_file_wrapped(const uint8_t* source_buf, size_t woff_data_size, const char* out_path);
 
 /// Destroys buffer with decoded data. Using with C wrapper
 void destroy_decoded_result(DecodedResult* buff_data);
