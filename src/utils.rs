@@ -62,7 +62,7 @@ pub(crate) fn create_ttf_file(data_slice: &[u8], path_to_out_file: &str) -> crat
 /// This one reads unsigned 32-bits value in big endian order
 /// If error occurs - panic with message
 #[allow(dead_code)]
-pub(crate) fn read_u32_be(buf: &mut ByteBuffer) -> u32 {
+pub fn read_u32_be(buf: &mut ByteBuffer) -> u32 {
     let part = buf.read_bytes(std::mem::size_of::<u32>());
     let mut rdr = Cursor::new(part);
     rdr.read_u32::<BigEndian>().expect("Error: couldn't read u32 value from buffer")
