@@ -1,6 +1,6 @@
 [package]
 name = "woff-decoder"
-version = "1.0.4"
+version = "1.0.5"
 authors = ["Alex Khomich <alexkh90@gmail.com>"]
 edition = "2021"
 readme = "README.md"
@@ -16,6 +16,7 @@ bytebuffer = "0.2.1"
 [profile.release]
 lto = true
 opt-level = 3
+strip = true
 codegen-units = 1
 panic = "abort"
 
