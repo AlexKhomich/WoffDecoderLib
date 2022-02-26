@@ -16,13 +16,13 @@ pub fn read_file(path: &str, buf: &mut Vec<u8>) -> crate::FileRWResult {
             match reader.read_to_end(buf) {
                 Ok(result_size) => { file_size = result_size },
                 Err(err) => {
-                    println!("Couldn't read the file: {}, cause: {}", path, err.to_string());
+                    println!("Couldn't read the file: {}, cause: {}", path, err);
                     error = crate::Error::ReadFromFileError;
                 },
             }
         },
         Err(err) => {
-            println!("Couldn't open the file: {}, cause: {}", path, err.to_string());
+            println!("Couldn't open the file: {}, cause: {}", path, err);
             error = crate::Error::OpenFileError
         },
     }
@@ -43,13 +43,13 @@ pub fn create_ttf_file(data_slice: &[u8], path_to_out_file: &str) -> crate::File
             match file.write_all(data_slice) {
                 Ok(_) => {},
                 Err(err) => {
-                    println!("Couldn't write to file: {}, cause: {}", path_to_out_file, err.to_string());
+                    println!("Couldn't write to file: {}, cause: {}", path_to_out_file, err);
                     error = crate::Error::WriteToFileError;
                 },
             };
         },
         Err(err) => {
-            println!("Couldn't create the file: {}, cause: {}", path_to_out_file, err.to_string());
+            println!("Couldn't create the file: {}, cause: {}", path_to_out_file, err);
             error = crate::Error::CreateFileError;
         },
     };
@@ -175,8 +175,7 @@ pub fn transform_u32_to_u8_vec(x: u32) -> Vec<u8> {
 #[allow(dead_code)]
 #[inline(always)]
 pub fn transform_u16_to_u8_vec(x: u16) -> Vec<u8> {
-    let mut result_vec: Vec<u8> = Vec::with_capacity(2);
-    result_vec.push(((x >> 8) & 0xff) as u8);
-    result_vec.push((x & 0xff) as u8);
-    result_vec
+    let first_byte = ((x >> 8) & 0xff) as u8;
+    let second_byte = (x & 0xff) as u8;
+    vec![first_byte, second_byte]
 }

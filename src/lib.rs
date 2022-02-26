@@ -24,7 +24,7 @@ mod tests {
         read_file(str_path, &mut buf);
         let result = DecodedResult::create_result(decode_internal(&mut buf));
         match result {
-            Ok(data) => { debug_assert!(data.len() > 0) }
+            Ok(data) => { debug_assert!(!data.is_empty()) }
             Err(err) => { debug_assert!(err == Error::None) }
         }
     }
@@ -36,7 +36,7 @@ mod tests {
         let read_result = read_file(str_path, &mut buf);
         debug_assert!(
             !str_path.is_empty()
-                && buf.len() > 0
+                && !buf.is_empty()
                 && read_result.error == Error::None
                 && read_result.data_len > 0
         )
@@ -98,7 +98,7 @@ impl DecodedResult {
     }
 
     fn create_result_ptr(result: Result<DecodedData, Error>) -> *mut Self {
-        return match result {
+        match result {
             Ok(data) => {
                 assemble_sfnt_binary(
                     data.sfnt_header,
@@ -151,7 +151,7 @@ impl FileRWResult {
     }
 
     fn create_result_ptr(result: Result<DecodedData, Error>, out_path: &str) -> *mut Self {
-        return match result {
+        match result {
             Ok(data) => {
                 create_sfnt_file(
                     data.sfnt_header,
@@ -190,6 +190,9 @@ pub enum Error {
     OutputPathError,
 }
 
+/// # Safety
+/// Be sure that `path` pointer is not null and stay allocated while decode in progress
+///
 /// Decode .woff file data to SFNT bytes wrapped for using with C wrapper
 /// And returns Result structure with decoded data
 #[no_mangle]
@@ -207,6 +210,10 @@ pub unsafe extern fn decode_from_file_wrapped(path: *const c_char) -> *mut Decod
     DecodedResult::create_result_ptr(decode_internal(&mut buf))
 }
 
+/// # Safety
+/// Be sure that `source_buf` pointer is not null and stay allocated while decode in progress and the
+/// `woff_data_size` is the actual size of `source_buf`
+///
 /// Decode WOFF data to SFNT data wrapped for using with C wrapper
 #[no_mangle]
 pub unsafe extern fn decode_from_data_wrapped(
@@ -225,6 +232,9 @@ pub unsafe extern fn decode_from_data_wrapped(
     }
 }
 
+/// # Safety
+/// Be sure that `in_path` and `out_path` pointers are not null and exists
+///
 /// Decode .woff file data to SFNT file wrapped for using with C wrapper
 /// And returns FileRWResult structure with decoded data
 #[no_mangle]
@@ -251,6 +261,10 @@ pub unsafe extern fn decode_file_to_file_wrapped(
     FileRWResult::create_result_ptr(decode_internal(&mut buf), out_path)
 }
 
+/// # Safety
+/// Be sure that `source_buf` pointer is not null and stay allocated while decode in progress and the
+/// `woff_data_size` is the actual size of `source_buf`. Also the `path` is not null and exists
+///
 /// Decode WOFF data to SFNT file wrapped for using with C wrapper
 #[no_mangle]
 pub unsafe extern fn decode_data_to_file_wrapped(
@@ -275,7 +289,9 @@ pub unsafe extern fn decode_data_to_file_wrapped(
         FileRWResult::create_error_result_ptr(Error::DecodeError)
     }
 }
-
+/// # Safety
+/// Be sure that the pointer to the `data` you want to deallocate is not null
+///
 /// Destroys buffer with decoded data. Using with C wrapper
 #[no_mangle]
 pub unsafe extern fn destroy_decoded_result(data: *mut DecodedResult) {
@@ -287,6 +303,9 @@ pub unsafe extern fn destroy_decoded_result(data: *mut DecodedResult) {
     }
 }
 
+/// # Safety
+/// Be sure that the pointer to the `data` you want to deallocate is not null
+///
 /// Destroys buffer with decoded data. Using with C wrapper
 #[no_mangle]
 pub unsafe extern fn destroy_file_rw_result(data: *mut FileRWResult) {
@@ -370,7 +389,7 @@ fn sanity_check(buf: &mut Vec<u8>) -> Error {
 }
 
 /// Main function to decode and construct SFNT file or data form WOFF file
-fn decode_internal(mut buf: &mut Vec<u8>) -> std::result::Result<DecodedData, Error> {
+fn decode_internal(buf: &mut Vec<u8>) -> std::result::Result<DecodedData, Error> {
     let mut error = sanity_check(buf);
 
     // return result with error from sanity check if error occurred
@@ -408,7 +427,7 @@ fn decode_internal(mut buf: &mut Vec<u8>) -> std::result::Result<DecodedData, Er
     // construct each SFNT table record
     for table_number in 0..sfnt_num_tables as usize {
         let next_table_offset = woff_header_size + (table_number * woff_table_directory_size);
-        let woff_table_dir_entry = create_woff_table_dir_entry(&mut buf, next_table_offset);
+        let woff_table_dir_entry = create_woff_table_dir_entry(buf, next_table_offset);
         // check if dir_entry parameters are correct
         // and if not return Result with error
         if (woff_table_dir_entry.orig_length < woff_table_dir_entry.comp_length)
@@ -473,11 +492,12 @@ fn decode_internal(mut buf: &mut Vec<u8>) -> std::result::Result<DecodedData, Er
 
         // needs to check table record len on 4-bytes alignment and if it's not - add zero-bytes to each unalignment table
         if table_dir_entry.orig_length % 4 != 0 {
-            let padded_len = calculate_padded_len(table_dir_entry.orig_length, sfnt_table_data.len());
+            let padded_len = calculate_padded_len(
+                table_dir_entry.orig_length,
+                sfnt_table_data.len()
+            ) as usize;
 
-            for _ in 0..padded_len {
-                sfnt_table_data.push(b'\0');
-            }
+            sfnt_table_data.resize(padded_len as usize, b'\0');
 
             sfnt_table_offset += sfnt_table_data.len()
         } else {
@@ -589,7 +609,7 @@ fn assemble_sfnt_data_vec(
     for mut table in data_tables {
         sfnt_data_vec.append(&mut table)
     }
-    return sfnt_data_vec
+    sfnt_data_vec
 }
 
 /// Creates SFNT binary from parts of data and call function for creating .ttf file
@@ -617,7 +637,7 @@ fn create_sfnt_file(
         sfnt_data_vec.append(&mut table)
     }
 
-    Box::into_raw(Box::new(create_ttf_file(&sfnt_data_vec.as_slice(), path_to_out_file)))
+    Box::into_raw(Box::new(create_ttf_file(sfnt_data_vec.as_slice(), path_to_out_file)))
 }
 
 /// Creates SFNT binary from parts of data and call function for creating .ttf file
@@ -645,5 +665,5 @@ fn create_sfnt_file_from_vec(
         sfnt_data_vec.append(&mut table)
     }
 
-    create_ttf_file(&sfnt_data_vec.as_slice(), path_to_out_file).error
+    create_ttf_file(sfnt_data_vec.as_slice(), path_to_out_file).error
 }
