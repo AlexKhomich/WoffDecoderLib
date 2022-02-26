@@ -1,5 +1,5 @@
 ## Description
-Woff decoder library to convert WOFF file to SFNT. Of course you can use this library only with rust but project also includes 'C/C++' header file with wrapper functions to call code from Rust library. You can find example project here: https://github.com/AlexKhomich/decoder_wrapper_test
+Woff decoder library to convert WOFF file to SFNT. Of course you can use this library only with rust but project also includes 'C/C++' header file with wrapper functions to call code from Rust library. You can find example project here: https://github.com/AlexKhomich/decoder_wrapper_test. Also a rust example, on how to use the library, was added to the project to the 'src/main.rs' file.
 
 ## Build android libs
 Set android home and NDK home as env variables:
