@@ -6,12 +6,12 @@ Set android home and NDK home as env variables:
 <br> export ANDROID_HOME= \<path to android sdk\> </br>
 <br> export NDK_HOME=$ANDROID_HOME/ndk-bundle </br>
 
-Move to project directory and set path to NDK bundle under cargo-config.toml file (change <path_to_ndk_bundle> to your e.g. ~/Android/Sdk/ndk-bundle). This file will be copied to ~/.cargo after running prepare_workspace script. 
- Run prepare_workspace.sh (you can set api version for android SDK - 29 by default and processor architecture). After that just run build_android.sh script. 
+Move to the project directory and set path to the NDK bundle under cargo-config.toml file (change <path_to_ndk_bundle> to yours e.g. ~/Android/Sdk/ndk-bundle). This file will be copied to the ~/.cargo directory after running prepare_workspace script. 
+ Run prepare_workspace.sh (you can set api version for android SDK - 29 by default and processor architecture). After that just run the build_android.sh script. 
  
  ## Build iOS libs
  You can read about it here: https://mozilla.github.io/firefox-browser-architecture/experiments/2017-09-06-rust-on-ios.html
  Building libs for iOS much easier than building libs for android.
  
- Good luck and have fun)
+ Good luck and have fun :)
 
