@@ -170,7 +170,7 @@ impl FileRWResult {
 /// Enum with types of error
 /// If `Error` with type `None` that means no errors occurred
 #[repr(C)]
-#[derive(PartialEq, Debug)]
+#[derive(PartialEq, Eq, Debug)]
 pub enum Error {
     None,
     DecodeError,
@@ -321,10 +321,7 @@ pub fn decode_from_file(path: &str) -> Result<Vec<u8>, Error> {
     if read_result.error != Error::None {
         return Err(read_result.error);
     };
-    match DecodedResult::create_result(decode_internal(&mut buf)) {
-        Ok(result) => { Ok(result) }
-        Err(err) => { Err(err) }
-    }
+    DecodedResult::create_result(decode_internal(&mut buf))
 }
 
 /// Decode .woff file data to SFNT file
@@ -339,10 +336,7 @@ pub fn decode_from_file_to_file(in_path: &str, out_path: &str) -> Error {
 
 /// Decode WOFF data from vector to SFNT data
 pub fn decode_from_vec(buf: &mut Vec<u8>) -> Result<Vec<u8>, Error> {
-    match DecodedResult::create_result(decode_internal(buf)) {
-        Ok(result) => { Ok(result) }
-        Err(err) => { Err(err) }
-    }
+    DecodedResult::create_result(decode_internal(buf))
 }
 
 /// Decode WOFF data from vector to SFNT file
@@ -353,10 +347,7 @@ pub fn decode_from_vec_to_file(buf: &mut Vec<u8>, out_path: &str) -> Error {
 /// Decode WOFF data from slice to SFNT data
 pub fn decode_from_slice(buf: &[u8]) -> Result<Vec<u8>, Error> {
     let mut data: Vec<u8> = Vec::from(buf);
-    match DecodedResult::create_result(decode_internal(&mut data)) {
-        Ok(result) => { Ok(result) }
-        Err(err) => { Err(err) }
-    }
+    DecodedResult::create_result(decode_internal(&mut data))
 }
 
 /// Decode WOFF data from slice to SFNT file
@@ -389,7 +380,7 @@ fn sanity_check(buf: &mut Vec<u8>) -> Error {
 }
 
 /// Main function to decode and construct SFNT file or data form WOFF file
-fn decode_internal(buf: &mut Vec<u8>) -> std::result::Result<DecodedData, Error> {
+fn decode_internal(buf: &mut Vec<u8>) -> Result<DecodedData, Error> {
     let mut error = sanity_check(buf);
 
     // return result with error from sanity check if error occurred
@@ -516,7 +507,7 @@ fn decode_internal(buf: &mut Vec<u8>) -> std::result::Result<DecodedData, Error>
 }
 
 /// Function for creating WOFF header from raw data
-fn create_woff_header(buf: &mut Vec<u8>) -> WoffHeader {
+fn create_woff_header(buf: &mut [u8]) -> WoffHeader {
     let mut buffer = ByteBuffer::from_bytes(buf);
     WoffHeader {
         signature: read_u32_be(&mut buffer),
@@ -536,7 +527,7 @@ fn create_woff_header(buf: &mut Vec<u8>) -> WoffHeader {
 }
 
 /// function for creating WOFF table directory entry structure
-fn create_woff_table_dir_entry(buf: &mut Vec<u8>, next_table_offset: usize) -> WoffTableDirectoryEntry {
+fn create_woff_table_dir_entry(buf: &mut [u8], next_table_offset: usize) -> WoffTableDirectoryEntry {
     let mut buffer = ByteBuffer::from_bytes(buf);
     buffer.set_rpos(next_table_offset);
     WoffTableDirectoryEntry {

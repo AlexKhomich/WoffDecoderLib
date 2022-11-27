@@ -22,4 +22,4 @@ panic = "abort"
 
 [lib]
 name = "woffdecoder"
-crate-type = ["staticlib", "cdylib", "dylib", "rlib"]
+crate-type = ["staticlib", "cdylib", "rlib"]
