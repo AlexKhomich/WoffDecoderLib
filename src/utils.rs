@@ -1,8 +1,6 @@
-use std::io::Cursor;
-use byteorder::{BigEndian, ReadBytesExt};
 use std::fs::File;
 use std::io::{BufReader, Read, Write};
-use bytebuffer::ByteBuffer;
+use bytebuffer::{ByteBuffer, Endian};
 
 
 /// Reads data from file to buffer
@@ -63,18 +61,16 @@ pub fn create_ttf_file(data_slice: &[u8], path_to_out_file: &str) -> crate::File
 /// If error occurs - panic with message
 #[allow(dead_code)]
 pub fn read_u32_be(buf: &mut ByteBuffer) -> u32 {
-    let part = buf.read_bytes(std::mem::size_of::<u32>());
-    let mut rdr = Cursor::new(part);
-    rdr.read_u32::<BigEndian>().expect("Error: couldn't read u32 value from buffer")
+    buf.set_endian(Endian::BigEndian);
+    buf.read_u32().expect("Error: couldn't read u32 value from buffer")
 }
 
 /// This one reads unsigned 16-bits value in big endian order
 /// If error occurs - panic with message
 #[allow(dead_code)]
 pub fn read_u16_be(buf: &mut ByteBuffer) -> u16 {
-    let part = buf.read_bytes(std::mem::size_of::<u16>());
-    let mut rdr = Cursor::new(part);
-    rdr.read_u16::<BigEndian>().expect("Error: couldn't read u16 value from buffer")
+    buf.set_endian(Endian::BigEndian);
+    buf.read_u16().expect("Error: couldn't read u16 value from buffer")
 }
 
 /// Calculates the entrySelector that is log2(maximum power of 2 <= numTables).
@@ -120,9 +116,8 @@ pub fn calculate_search_range(num_tables: u16) -> u16 {
 /// Calculates padded length for structure that has to be aligned by 4-bytes.
 #[allow(dead_code)]
 #[inline(always)]
-pub fn calculate_padded_len(orig_len: u32, sfnt_table_data_len: usize) -> u32 {
-    let aligned_len = (orig_len + 3) & !3;
-    aligned_len - sfnt_table_data_len as u32
+pub fn calculate_padded_len(orig_len: u32) -> u32 {
+    (orig_len + 3) & !3
 }
 
 /// Works only with the little endian order.

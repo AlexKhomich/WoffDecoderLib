@@ -69,13 +69,13 @@ struct DecodedData {
     pub sfnt_header: SfntOffsetTable,
     pub table_records: Vec<SfntTableRecord>,
     pub data_tables: Vec<Vec<u8>>,
-    pub error: Error
+    pub decompressed_data_size: u32,
+    pub error: Error,
 }
 
 /// Creates `DecodedResult` structure with null decoded data pointer,
 /// zero decoded data length and error type fields
 impl DecodedResult {
-
     fn create_error_result_ptr(err: Error) -> *mut Self {
         Box::into_raw(Box::new(Self {
             decoded_data: std::ptr::null_mut(),
@@ -90,7 +90,8 @@ impl DecodedResult {
                 Ok(assemble_sfnt_data_vec(
                     data.sfnt_header,
                     data.table_records,
-                    data.data_tables
+                    data.data_tables,
+                    data.decompressed_data_size as usize
                 ))
             }
             Err(err) => { Err(err) }
@@ -104,7 +105,8 @@ impl DecodedResult {
                     data.sfnt_header,
                     data.table_records,
                     data.data_tables,
-                    data.error
+                    data.decompressed_data_size as usize,
+                    data.error,
                 )
             }
             Err(err) => {
@@ -143,7 +145,8 @@ impl FileRWResult {
                     data.sfnt_header,
                     data.table_records,
                     data.data_tables,
-                    out_path
+                    data.decompressed_data_size as usize,
+                    out_path,
                 )
             }
             Err(err) => { err }
@@ -157,7 +160,8 @@ impl FileRWResult {
                     data.sfnt_header,
                     data.table_records,
                     data.data_tables,
-                    out_path
+                    data.decompressed_data_size as usize,
+                    out_path,
                 )
             }
             Err(err) => {
@@ -289,6 +293,7 @@ pub unsafe extern fn decode_data_to_file_wrapped(
         FileRWResult::create_error_result_ptr(Error::DecodeError)
     }
 }
+
 /// # Safety
 /// Be sure that the pointer to the `data` you want to deallocate is not null
 ///
@@ -331,7 +336,7 @@ pub fn decode_from_file_to_file(in_path: &str, out_path: &str) -> Error {
     if read_result.error != Error::None {
         return read_result.error;
     }
-   FileRWResult::create_result(decode_internal(&mut buf), out_path)
+    FileRWResult::create_result(decode_internal(&mut buf), out_path)
 }
 
 /// Decode WOFF data from vector to SFNT data
@@ -472,23 +477,20 @@ fn decode_internal(buf: &mut Vec<u8>) -> Result<DecodedData, Error> {
             sfnt_table_data.extend_from_slice(source_slice);
         }
 
-        let snft_table_record = SfntTableRecord {
+        let sfnt_table_record = SfntTableRecord {
             table_tag: table_dir_entry.tag,
             checksum: table_dir_entry.orig_checksum,
             offset: sfnt_table_offset as u32,
             length: table_dir_entry.orig_length,
         };
 
-        sfnt_table_records_vec.push(snft_table_record);
+        sfnt_table_records_vec.push(sfnt_table_record);
 
         // needs to check table record len on 4-bytes alignment and if it's not - add zero-bytes to each unalignment table
         if table_dir_entry.orig_length % 4 != 0 {
-            let padded_len = calculate_padded_len(
-                table_dir_entry.orig_length,
-                sfnt_table_data.len()
-            ) as usize;
+            let padded_len = calculate_padded_len(table_dir_entry.orig_length, ) as usize;
 
-            sfnt_table_data.resize(padded_len as usize, b'\0');
+            sfnt_table_data.resize(padded_len, b'\0');
 
             sfnt_table_offset += sfnt_table_data.len()
         } else {
@@ -502,7 +504,8 @@ fn decode_internal(buf: &mut Vec<u8>) -> Result<DecodedData, Error> {
         sfnt_header: sfnt_offset_table,
         table_records: sfnt_table_records_vec,
         data_tables: sfnt_table_data_vec,
-        error
+        decompressed_data_size: woff_header.total_sfnt_size,
+        error,
     })
 }
 
@@ -546,14 +549,11 @@ fn assemble_sfnt_binary(
     sfnt_header: SfntOffsetTable,
     table_records: Vec<SfntTableRecord>,
     data_tables: Vec<Vec<u8>>,
+    decompressed_data_size: usize,
     error: Error,
 ) -> *mut DecodedResult {
     let mut sfnt_header_data = sfnt_header.transform_to_u8_vec();
-    let mut sfnt_data_vec: Vec<u8> = Vec::with_capacity(
-        sfnt_header_data.len()
-            + table_records.len()
-            + data_tables.len()
-    );
+    let mut sfnt_data_vec: Vec<u8> = Vec::with_capacity(decompressed_data_size);
 
     sfnt_data_vec.append(&mut sfnt_header_data);
 
@@ -581,14 +581,11 @@ fn assemble_sfnt_binary(
 fn assemble_sfnt_data_vec(
     sfnt_header: SfntOffsetTable,
     table_records: Vec<SfntTableRecord>,
-    data_tables: Vec<Vec<u8>>
+    data_tables: Vec<Vec<u8>>,
+    decompressed_data_size: usize,
 ) -> Vec<u8> {
     let mut sfnt_header_data = sfnt_header.transform_to_u8_vec();
-    let mut sfnt_data_vec: Vec<u8> = Vec::with_capacity(
-        sfnt_header_data.len()
-            + table_records.len()
-            + data_tables.len()
-    );
+    let mut sfnt_data_vec: Vec<u8> = Vec::with_capacity(decompressed_data_size);
 
     sfnt_data_vec.append(&mut sfnt_header_data);
 
@@ -608,14 +605,11 @@ fn create_sfnt_file(
     sfnt_header: SfntOffsetTable,
     table_records: Vec<SfntTableRecord>,
     data_tables: Vec<Vec<u8>>,
+    decompressed_data_size: usize,
     path_to_out_file: &str,
 ) -> *mut FileRWResult {
     let mut sfnt_header_data = sfnt_header.transform_to_u8_vec();
-    let mut sfnt_data_vec: Vec<u8> = Vec::with_capacity(
-        sfnt_header_data.len()
-            + table_records.len()
-            + data_tables.len()
-    );
+    let mut sfnt_data_vec: Vec<u8> = Vec::with_capacity(decompressed_data_size);
 
     sfnt_data_vec.append(&mut sfnt_header_data);
 
@@ -636,14 +630,11 @@ fn create_sfnt_file_from_vec(
     sfnt_header: SfntOffsetTable,
     table_records: Vec<SfntTableRecord>,
     data_tables: Vec<Vec<u8>>,
+    decompressed_data_size: usize,
     path_to_out_file: &str,
 ) -> Error {
     let mut sfnt_header_data = sfnt_header.transform_to_u8_vec();
-    let mut sfnt_data_vec: Vec<u8> = Vec::with_capacity(
-        sfnt_header_data.len()
-            + table_records.len()
-            + data_tables.len()
-    );
+    let mut sfnt_data_vec: Vec<u8> = Vec::with_capacity(decompressed_data_size);
 
     sfnt_data_vec.append(&mut sfnt_header_data);
 

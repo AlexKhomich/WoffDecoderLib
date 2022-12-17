@@ -1,6 +1,6 @@
 [package]
 name = "woff-decoder"
-version = "1.0.5"
+version = "1.1.0"
 authors = ["Alex Khomich <alexkh90@gmail.com>"]
 edition = "2021"
 readme = "README.md"
@@ -10,8 +10,8 @@ repository = "https://github.com/AlexKhomich/WoffDecoderLib.git"
 
 [dependencies]
 byteorder = "1.4.3"
-flate2 = "1.0.22"
-bytebuffer = "0.2.1"
+flate2 = "1.0.25"
+bytebuffer = "2.0.1"
 
 [profile.release]
 lto = true
