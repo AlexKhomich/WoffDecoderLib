@@ -12,45 +12,6 @@ use std::ffi::CStr;
 use std::os::raw::c_char;
 use bytebuffer::ByteBuffer;
 
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_decode_to_buffer() {
-        let str_path = "test_fonts/noto-sans-tc.woff";
-        let mut buf: Vec<u8> = vec![];
-        read_file(str_path, &mut buf);
-        let result = DecodedResult::create_result(decode_internal(&mut buf));
-        match result {
-            Ok(data) => { debug_assert!(!data.is_empty()) }
-            Err(err) => { debug_assert!(err == Error::None) }
-        }
-    }
-
-    #[test]
-    fn test_read_file() {
-        let str_path = "test_fonts/noto-sans-tc.woff";
-        let mut buf: Vec<u8> = vec![];
-        let read_result = read_file(str_path, &mut buf);
-        debug_assert!(
-            !str_path.is_empty()
-                && !buf.is_empty()
-                && read_result.error == Error::None
-                && read_result.data_len > 0
-        )
-    }
-
-    #[test]
-    fn test_sanity_check() {
-        let str_path = "test_fonts/noto-sans-tc.woff";
-        let mut buf: Vec<u8> = vec![];
-        read_file(str_path, &mut buf);
-        debug_assert!(sanity_check(&mut buf) == Error::None)
-    }
-}
-
 /// Result structure with decoded SFNT data
 ///
 /// #Fields
@@ -200,7 +161,7 @@ pub enum Error {
 /// Decode .woff file data to SFNT bytes wrapped for using with C wrapper
 /// And returns Result structure with decoded data
 #[no_mangle]
-pub unsafe extern fn decode_from_file_wrapped(path: *const c_char) -> *mut DecodedResult {
+pub unsafe extern "C" fn decode_from_file_wrapped(path: *const c_char) -> *mut DecodedResult {
     let c_srt = CStr::from_ptr(path);
     let str_path = match c_srt.to_str() {
         Ok(string) => string,
@@ -220,7 +181,7 @@ pub unsafe extern fn decode_from_file_wrapped(path: *const c_char) -> *mut Decod
 ///
 /// Decode WOFF data to SFNT data wrapped for using with C wrapper
 #[no_mangle]
-pub unsafe extern fn decode_from_data_wrapped(
+pub unsafe extern "C" fn decode_from_data_wrapped(
     source_buf: *const u8,
     woff_data_size: usize,
 ) -> *mut DecodedResult {
@@ -242,7 +203,7 @@ pub unsafe extern fn decode_from_data_wrapped(
 /// Decode .woff file data to SFNT file wrapped for using with C wrapper
 /// And returns FileRWResult structure with decoded data
 #[no_mangle]
-pub unsafe extern fn decode_file_to_file_wrapped(
+pub unsafe extern "C" fn decode_file_to_file_wrapped(
     in_path: *const c_char,
     out_path: *const c_char,
 ) -> *mut FileRWResult {
@@ -271,7 +232,7 @@ pub unsafe extern fn decode_file_to_file_wrapped(
 ///
 /// Decode WOFF data to SFNT file wrapped for using with C wrapper
 #[no_mangle]
-pub unsafe extern fn decode_data_to_file_wrapped(
+pub unsafe extern "C" fn decode_data_to_file_wrapped(
     source_buf: *const u8,
     woff_data_size: usize,
     path: *const c_char,
@@ -299,7 +260,7 @@ pub unsafe extern fn decode_data_to_file_wrapped(
 ///
 /// Destroys buffer with decoded data. Using with C wrapper
 #[no_mangle]
-pub unsafe extern fn destroy_decoded_result(data: *mut DecodedResult) {
+pub unsafe extern "C" fn destroy_decoded_result(data: *mut DecodedResult) {
     if !data.is_null() {
         if !(*data).decoded_data.is_null() {
             drop(Box::from_raw((*data).decoded_data));
@@ -313,7 +274,7 @@ pub unsafe extern fn destroy_decoded_result(data: *mut DecodedResult) {
 ///
 /// Destroys buffer with decoded data. Using with C wrapper
 #[no_mangle]
-pub unsafe extern fn destroy_file_rw_result(data: *mut FileRWResult) {
+pub unsafe extern "C" fn destroy_file_rw_result(data: *mut FileRWResult) {
     if !data.is_null() {
         drop(Box::from_raw(data));
     }
@@ -648,4 +609,42 @@ fn create_sfnt_file_from_vec(
     }
 
     create_ttf_file(sfnt_data_vec.as_slice(), path_to_out_file).error
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_decode_to_buffer() {
+        let str_path = "test_fonts/noto-sans-tc.woff";
+        let mut buf: Vec<u8> = vec![];
+        read_file(str_path, &mut buf);
+        let result = DecodedResult::create_result(decode_internal(&mut buf));
+        match result {
+            Ok(data) => { debug_assert!(!data.is_empty()) }
+            Err(err) => { debug_assert!(err == Error::None) }
+        }
+    }
+
+    #[test]
+    fn test_read_file() {
+        let str_path = "test_fonts/noto-sans-tc.woff";
+        let mut buf: Vec<u8> = vec![];
+        let read_result = read_file(str_path, &mut buf);
+        debug_assert!(
+            !str_path.is_empty()
+                && !buf.is_empty()
+                && read_result.error == Error::None
+                && read_result.data_len > 0
+        )
+    }
+
+    #[test]
+    fn test_sanity_check() {
+        let str_path = "test_fonts/noto-sans-tc.woff";
+        let mut buf: Vec<u8> = vec![];
+        read_file(str_path, &mut buf);
+        debug_assert!(sanity_check(&mut buf) == Error::None)
+    }
 }
